@@ -6,24 +6,39 @@ The tool asks a model to fill blanks and output the completed full sentence. It 
 
 This project is not an official leaderboard. The goal is to observe model behavior statistically.
 
+## Design position
+
+`llmclozestat` is a measurement-log tool, not a ranking site.
+
+The primary artifact is raw JSONL. Reports and summaries are derived artifacts. A user should be able to re-aggregate results from raw records.
+
 ## Scope
 
 ### v0.0
 
-- Use a small smoke dataset.
+- Use a one-item smoke dataset.
 - Read cloze items from `datasets/<dataset_id>/items.jsonl`.
-- Send prompts to an OpenAI-compatible endpoint.
-- Save one JSONL record per trial.
-- Extract fills by using item segments.
+- Treat JSONL as the canonical item format.
+- Support one or more blanks in the item schema.
+- Extract fills by using item `segments`.
 - Score each blank independently.
-- Aggregate basic statistics.
+- Save one JSONL record per trial.
+- Aggregate basic statistics from raw records.
 
 ### v0.1
 
-- Add more probe items.
-- Add lightweight TUI progress display.
-- Add Markdown report generation.
+- Add a small probe dataset.
 - Add validation for item/result files.
+- Add OpenAI-compatible runner for LM Studio and similar local servers.
+- Add lightweight terminal progress display.
+- Add Markdown report generation.
+
+### Later
+
+- Add more probe categories.
+- Add long-context and dependent multi-blank probes.
+- Add optional task-shot and control-shot conditions.
+- Consider advanced statistics outside the core v0.x path.
 
 ## Non-goals for early versions
 
@@ -34,6 +49,7 @@ This project is not an official leaderboard. The goal is to observe model behavi
 - LLM-as-a-judge scoring.
 - Complex IRT or clustering.
 - Web dashboard.
+- Result collection in this repository.
 
 ## Data flow
 
@@ -53,11 +69,19 @@ items.jsonl
 
 ### Item
 
-An item is a cloze problem with one or more blanks. Each item must declare what it is intended to test.
+An item is a cloze problem with one or more blanks. Each item must declare what it is intended to test through `validation_target`.
 
 ### Blank
 
-Each blank is scored independently. For multi-blank items, the item-level score is derived from blank-level scores.
+A blank is a single missing span in an item. Each blank is scored independently. For multi-blank items, the item-level score is derived from blank-level scores.
+
+### Segment
+
+Segments are the fixed text parts around blanks. For `n` blanks, an item must have `n + 1` segments.
+
+```text
+segments[0] + blank_1 + segments[1] + blank_2 + ... + segments[n]
+```
 
 ### Fill
 
@@ -66,3 +90,24 @@ A fill is the text extracted from a model's completed sentence at a blank positi
 ### Repeated fills
 
 Repeated identical fills are not deduplicated. If the same model repeatedly gives the same wrong fill at the same blank, every occurrence is counted as evidence of a systematic tendency.
+
+## Scoring levels
+
+### Blank-level
+
+- `format_pass`: whether the blank can be extracted under the requested completed-sentence format.
+- `content_pass`: whether the extracted fill is accepted.
+- `fill_class`: accepted, near_miss, wrong, format_fail, or parse_fail.
+
+### Item-level
+
+- `item_partial_score`: accepted blank count divided by blank count.
+- `item_strict_pass`: true only when all blanks pass content and the item format is acceptable.
+
+## Provider strategy
+
+The first backend target is OpenAI-compatible HTTP APIs. This includes LM Studio local server usage. Provider-specific expansion is intentionally delayed.
+
+## Result strategy
+
+Local run outputs go under `results/`, which is ignored by Git. Community result collection is expected to move to a separate repository later, if needed.
