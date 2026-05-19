@@ -12,6 +12,26 @@ datasets/<dataset_id>/items.jsonl
 
 Each line is one JSON object. YAML or Markdown authoring formats may be added later, but JSONL remains the normalized format read by the CLI.
 
+## text_with_blanks and segments
+
+`text_with_blanks` is for authoring, review, and display.
+
+`segments` is the canonical parser input.
+
+Prompt builders may render blank markers differently, for example as `（　　　）`, but scoring must rely on `segments` rather than the visual blank marker in `text_with_blanks`.
+
+For `n` blanks:
+
+```text
+segments.length == blanks.length + 1
+```
+
+The reconstructed completed sentence is:
+
+```text
+segments[0] + fill_1 + segments[1] + fill_2 + ... + fill_n + segments[n]
+```
+
 ## Required item intent
 
 Every item must include `validation_target` with at least:
