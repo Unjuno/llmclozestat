@@ -26,17 +26,17 @@ A result record should contain:
       "position": 1,
       "extracted_fill": "右",
       "fill_class": "accepted",
-      "format_pass": true,
+      "blank_parse_pass": true,
       "content_pass": true,
       "parse_fail": false,
-      "format_score_f1": 1.0,
-      "format_score_edit": 1.0,
       "content_score_f1": 1.0
     }
   ],
   "item_format_pass": true,
   "item_strict_pass": true,
   "item_partial_score": 1.0,
+  "format_score_f1": 1.0,
+  "format_score_edit": 1.0,
   "latency_ms": 0,
   "temperature": 0,
   "max_tokens": 64
@@ -57,20 +57,55 @@ Recommended identity fields:
 
 For repeated trials, do not overwrite earlier rows. Append a new JSONL row.
 
+## Scoring precedence
+
+Use this order when turning a model output into a result record:
+
+1. Preserve `raw_output` exactly.
+2. Produce `normalized_output` by applying minimal normalization.
+3. Check exact match against `expected_full_texts`.
+4. Try segment-based extraction.
+5. If segment extraction succeeds, classify each extracted fill.
+6. If no fill can be extracted, set `parse_fail = true` for the affected blank.
+7. Compute similarity scores as diagnostic metrics only.
+
+Early versions should prefer segment-based extraction only. Fallback extractors may be added later, but they must store their extraction mode explicitly.
+
+## Format failure and parse failure
+
+`format_fail` and `parse_fail` are different.
+
+- `format_fail`: the model did not follow the requested completed-sentence format.
+- `parse_fail`: no fill could be extracted for a blank.
+
+A model output may be a format failure while still allowing a fill to be extracted.
+
+Example:
+
+```text
+答えは右です。
+```
+
+This is not the requested completed full sentence. It may be `item_format_pass = false`, but if a future fallback extractor extracts `右`, the blank does not have to be `parse_fail`.
+
+For v0.0, fallback extraction is not required. Segment-based extraction is the canonical path.
+
 ## Blank-level scoring
 
 Each blank is scored independently.
 
-- `format_pass`: the output can be interpreted as the requested completed sentence format for this blank.
+- `blank_parse_pass`: a fill was extracted for this blank by the active extraction method.
 - `content_pass`: the extracted fill is in `accepted_fills`.
 - `parse_fail`: the fill could not be extracted.
 - `fill_class`: one of `accepted`, `near_miss`, `wrong`, `format_fail`, `parse_fail`.
 
+Do not use `format_pass` at the blank level. Use `blank_parse_pass` to avoid confusion with item-level format compliance.
+
 ## Item-level scoring
 
+- `item_format_pass`: true when the whole output follows the requested completed-sentence format.
 - `item_partial_score`: accepted blank count divided by blank count.
-- `item_strict_pass`: true only when all blanks are content-pass and the item format is acceptable.
-- `item_format_pass`: true when the completed sentence format can be parsed for the item.
+- `item_strict_pass`: true only when all blanks are content-pass and `item_format_pass` is true.
 
 ## Similarity scores
 
@@ -115,7 +150,7 @@ Overall:
 
 - `n_trials`
 - `content_pass_rate`
-- `format_pass_rate`
+- `item_format_pass_rate`
 - `strict_pass_rate`
 - `parse_fail_rate`
 - `avg_latency_ms`
@@ -132,7 +167,7 @@ Per category:
 
 - `primary_skill`
 - `content_pass_rate`
-- `format_pass_rate`
+- `item_format_pass_rate`
 - `parse_fail_rate`
 
 ## Repeated fills
