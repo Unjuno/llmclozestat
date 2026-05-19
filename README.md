@@ -2,13 +2,29 @@
 
 `llmclozestat` is a CLI project for cloze-based statistical profiling of LLM outputs.
 
-It asks language models to complete fill-in-the-blank sentences and output the completed full sentence. The tool records raw outputs, extracts filled spans, classifies each fill, and aggregates statistics such as content pass rate, format compliance, strict pass rate, parse failure rate, fill distribution, repeated wrong fills, and latency.
+It asks language models to complete fill-in-the-blank items and output the completed full sentence. The tool records raw outputs, extracts filled spans, classifies each fill, and aggregates statistics such as content pass rate, format compliance, strict pass rate, parse failure rate, fill distribution, repeated wrong fills, and latency.
 
 This is not an official leaderboard. The goal is to observe model behavior statistically.
 
+## 日本語概要
+
+`llmclozestat` は、LLMに穴埋め問題を解かせ、穴埋め後の全文を出力させることで、補完語・形式遵守・誤補完の分布を記録するCLIプロジェクトです。
+
+4択問題ではありません。A/B/C/D の選択肢を集計するのではなく、モデルが実際に補った文字列を抽出し、その分布を見ます。
+
 ## Current status
 
-The project starts with `smoke_v0`, a one-item dataset. This initial dataset is for pipeline validation and local probe statistics, not broad model evaluation.
+The project is in the v0.0 design/smoke-test phase.
+
+Current repository contents focus on:
+
+- item format
+- result format
+- problem data policy
+- one-item smoke dataset
+- minimal Python package skeleton
+
+The first dataset, `smoke_v0`, is intentionally small. It is for validating the pipeline and collecting local probe statistics, not for broad model evaluation.
 
 ## Core idea
 
@@ -21,34 +37,41 @@ cloze item
   -> model behavior profile
 ```
 
+Repeated fills are counted. If a model gives the same wrong fill at the same blank multiple times, those repetitions are treated as evidence of a systematic tendency, not as duplicates to remove.
+
 ## What this is not
 
 - Not a four-choice benchmark.
 - Not an official leaderboard.
 - Not an anti-tamper evaluation system.
+- Not a signed-result or attestation framework.
 - Not an LLM-judge scoring framework.
+- Not a web dashboard.
 
 ## Initial dataset
 
 See:
 
 - `datasets/smoke_v0/items.jsonl`
-- `docs/problem_data_policy.md`
+- `datasets/smoke_v0/README.md`
+
+The first item is a mirror-perspective probe. It tests whether a model can distinguish actual body-part correspondence from the common surface rule that mirrors “reverse left and right.”
 
 ## Documentation
 
-- `docs/design.md`
-- `docs/problem_data_policy.md`
-- `docs/result_format.md`
+- `docs/design.md` — project design and scope
+- `docs/problem_data_policy.md` — rules for authoring probe items
+- `docs/result_format.md` — raw result JSONL and aggregate format
 
 ## Early development plan
 
-1. Define item/result formats.
+1. Finalize item/result formats.
 2. Implement parser and scorer.
-3. Implement aggregation.
-4. Add OpenAI-compatible runner for LM Studio and similar local servers.
-5. Add lightweight terminal progress display.
-6. Add report generation.
+3. Implement basic aggregation.
+4. Add validation for item/result files.
+5. Add OpenAI-compatible runner for LM Studio and similar local servers.
+6. Add lightweight terminal progress display.
+7. Add Markdown report generation.
 
 ## License
 
