@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# Local environment
+.env
+.env.*
+
+# Local run outputs
+results/*
+!results/.gitkeep
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
