@@ -2,7 +2,7 @@
 
 `llmclozestat` is a CLI for cloze-based statistical profiling of LLM outputs.
 
-The tool asks a model to fill blanks and output the completed full sentence. It records raw outputs, extracts filled spans, classifies each fill, and aggregates statistics such as content pass rate, format pass rate, strict pass rate, parse failure rate, fill distribution, repeated wrong fills, and latency.
+The tool asks a model to fill blanks and output the completed full sentence. It records raw outputs, extracts filled spans, classifies each fill, and aggregates statistics such as content pass rate, item format pass rate, strict pass rate, parse failure rate, fill distribution, repeated wrong fills, and latency.
 
 This project is not an official leaderboard. The goal is to observe model behavior statistically.
 
@@ -95,14 +95,18 @@ Repeated identical fills are not deduplicated. If the same model repeatedly give
 
 ### Blank-level
 
-- `format_pass`: whether the blank can be extracted under the requested completed-sentence format.
+- `blank_parse_pass`: whether a fill could be extracted for the blank.
 - `content_pass`: whether the extracted fill is accepted.
+- `parse_fail`: whether no fill could be extracted for the blank.
 - `fill_class`: accepted, near_miss, wrong, format_fail, or parse_fail.
+
+Do not use `format_pass` at the blank level. Format is an item-level property; extraction is a blank-level property.
 
 ### Item-level
 
+- `item_format_pass`: whether the whole output followed the requested completed-sentence format.
 - `item_partial_score`: accepted blank count divided by blank count.
-- `item_strict_pass`: true only when all blanks pass content and the item format is acceptable.
+- `item_strict_pass`: true only when all blanks pass content and `item_format_pass` is true.
 
 ## Provider strategy
 
