@@ -57,6 +57,7 @@ Current repository contents focus on:
 - item format
 - result format
 - problem data policy
+- validation design
 - scoring/conceptual model
 - research rationale and plan
 - schemas for item/result/environment records
@@ -121,6 +122,7 @@ This is still self-reported data. The project does not certify that a submitted 
 - `docs/design.md` — project design and scope
 - `docs/problem_data_policy.md` — rules for authoring probe items
 - `docs/result_format.md` — raw result JSONL and aggregate format
+- `docs/validation.md` — validation layers, severity, and command design
 - `docs/cli_usage.md` — intended CLI workflow and command shapes
 - `schemas/README.md` — schema purpose and validation stance
 
