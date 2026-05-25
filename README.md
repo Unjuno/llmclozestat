@@ -43,6 +43,7 @@ Current repository contents focus on:
 - item format
 - result format
 - problem data policy
+- scoring/conceptual model
 - one-item smoke dataset
 - minimal Python package skeleton
 
@@ -98,9 +99,11 @@ This is still self-reported data. The project does not certify that a submitted 
 
 ## Documentation
 
+- `docs/conceptual_model.md` — conceptual model and scoring design
 - `docs/design.md` — project design and scope
 - `docs/problem_data_policy.md` — rules for authoring probe items
 - `docs/result_format.md` — raw result JSONL and aggregate format
+- `docs/cli_usage.md` — intended CLI workflow and command shapes
 
 ## Early development plan
 
