@@ -12,7 +12,7 @@ Parser and scorer should:
 - apply minimal normalization;
 - extract fills from completed full-sentence outputs;
 - score each blank independently;
-- distinguish format failure from parse failure;
+- distinguish instruction-following failure, format failure, and parse failure;
 - avoid LLM-based judging in v0.x;
 - record enough information for later aggregation.
 
@@ -53,6 +53,7 @@ Parser/scorer output becomes one result record containing:
 - `raw_output`;
 - `normalized_output`;
 - `blank_results`;
+- `instruction_following_pass`;
 - `item_format_pass`;
 - `item_partial_score`;
 - `item_strict_pass`;
@@ -67,9 +68,10 @@ Use this order:
 2. Normalize minimally.
 3. Check exact match against expected_full_texts.
 4. Try segment-based extraction.
-5. Classify each blank fill.
-6. Compute item-level scores.
-7. Store diagnostics.
+5. Evaluate output-instruction following.
+6. Classify each blank fill.
+7. Compute item-level scores.
+8. Store diagnostics.
 ```
 
 ## Normalization
@@ -85,7 +87,38 @@ Recommended v0 normalization:
 
 Do not normalize away meaningful content by default.
 
-Do not silently remove explanations, bullet points, or extra answer text. Extra text may be a format failure.
+Do not silently remove explanations, bullet points, or extra answer text. Extra text may be an instruction-following and format failure.
+
+## Output instruction following
+
+The prompt explicitly instructs the model to output the completed full sentence.
+
+Therefore, failure to output the completed full sentence is not merely a cosmetic formatting issue. It is an output-instruction-following failure under this task.
+
+Recommended field:
+
+```json
+{
+  "instruction_following_pass": true
+}
+```
+
+For v0:
+
+```text
+instruction_following_pass = item_format_pass
+```
+
+This does not claim to measure general instruction-following ability. It measures whether the model followed this task's explicit output contract.
+
+Examples that should usually fail `instruction_following_pass`:
+
+- `答えは右です。`
+- explanations before or after the completed sentence;
+- multiple alternatives;
+- Markdown bullets when not requested;
+- JSON when not requested;
+- only the filled word when the prompt asks for the full sentence.
 
 ## Exact full-text match
 
@@ -96,6 +129,7 @@ For each blank, the accepted fill can be derived from the matching expected full
 Exact match should imply:
 
 ```text
+instruction_following_pass = true
 item_format_pass = true
 blank_parse_pass = true for all blanks
 content_pass = true for all blanks
@@ -154,13 +188,13 @@ If segment extraction fails in v0, the blank should usually be:
 }
 ```
 
-## Format failure vs parse failure
+## Instruction failure vs format failure vs parse failure
 
-These are different.
+These are related but not identical.
 
-### Format failure
+### Instruction-following failure
 
-The model did not follow the requested completed-sentence format.
+The model did not follow the prompt's explicit output contract.
 
 Example:
 
@@ -168,17 +202,24 @@ Example:
 答えは右です。
 ```
 
-This is a format failure because the model did not output the completed full sentence.
+The content may be identifiable, but the model did not output the completed full sentence.
+
+### Format failure
+
+The output does not match the requested completed-sentence format.
+
+In v0, this usually aligns with instruction-following failure because the instruction is specifically to output the completed full sentence.
 
 ### Parse failure
 
 The parser cannot extract a fill for a blank.
 
-In v0, if no fallback extractor is enabled, the example above is also likely a parse failure because the required segments are missing.
+In v0, if no fallback extractor is enabled, `答えは右です。` is also likely a parse failure because the required segments are missing.
 
 Later versions may add fallback extraction. If fallback extraction extracts `右`, then:
 
 ```text
+instruction_following_pass = false
 item_format_pass = false
 blank_parse_pass = true
 parse_fail = false
@@ -230,7 +271,8 @@ else:
 
 Recommended rule:
 
-- item-level format problem: use `item_format_pass = false`;
+- explicit output-contract problem: use `instruction_following_pass = false`;
+- item-level completed-sentence format problem: use `item_format_pass = false`;
 - blank-level extraction problem: use `fill_class = parse_fail`;
 - extracted but wrong content: use `fill_class = wrong`.
 
@@ -263,11 +305,12 @@ Example:
 `item_strict_pass` is true only when:
 
 ```text
+instruction_following_pass = true
 item_format_pass = true
 and every blank has content_pass = true
 ```
 
-This means a model that gives the right word but not the completed sentence can have `content_pass = true` only if fallback extraction is enabled, but still fails `item_strict_pass` because `item_format_pass = false`.
+This means a model that gives the right word but not the completed sentence can have `content_pass = true` only if fallback extraction is enabled, but still fails `item_strict_pass` because `instruction_following_pass = false` and `item_format_pass = false`.
 
 ## Item format pass
 
@@ -279,7 +322,7 @@ the whole output follows the requested completed-sentence format
 
 In v0 segment extraction, `item_format_pass` should usually be true if all segments are found in order and no significant extra answer wrapper is present.
 
-Potential wrappers that should make `item_format_pass = false`:
+Potential wrappers that should make `item_format_pass = false` and `instruction_following_pass = false`:
 
 - `答えは...です。`
 - Markdown bullets when not requested;
@@ -369,6 +412,7 @@ v0 should implement:
 
 - exact full-text match;
 - segment-based extraction;
+- output-instruction-following flag;
 - explicit accepted/near-miss/wrong classification;
 - item partial score;
 - item strict pass;
