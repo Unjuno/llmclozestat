@@ -12,6 +12,28 @@ This is not an official leaderboard. The goal is to observe model behavior stati
 
 4択問題ではありません。A/B/C/D の選択肢を集計するのではなく、モデルが実際に補った文字列を抽出し、その分布を見ます。
 
+## Operating model
+
+`llmclozestat` is intended to be a normal local CLI tool.
+
+The expected workflow is:
+
+```text
+git clone
+  -> install CLI locally
+  -> choose a dataset
+  -> run against a local or OpenAI-compatible model endpoint
+  -> append raw JSONL records
+  -> aggregate summaries
+  -> inspect reports
+  -> repeat
+  -> commit or open a PR when enough results are collected
+```
+
+There is no built-in model authentication, result attestation, anti-tamper system, or official result verification. Local outputs are measurement logs for analysis, not certified benchmark records.
+
+Local scratch outputs should go under `results/`, which is ignored by Git. Shareable result packages should be prepared under `submissions/<user>/<run_id>/` and committed or submitted by pull request.
+
 ## Current status
 
 The project is in the v0.0 design/smoke-test phase.
@@ -43,6 +65,7 @@ Repeated fills are counted. If a model gives the same wrong fill at the same bla
 
 - Not a four-choice benchmark.
 - Not an official leaderboard.
+- Not an authentication system for LLM outputs.
 - Not an anti-tamper evaluation system.
 - Not a signed-result or attestation framework.
 - Not an LLM-judge scoring framework.
@@ -56,6 +79,22 @@ See:
 - `datasets/smoke_v0/README.md`
 
 The first item is a mirror-perspective probe. It tests whether a model can distinguish actual body-part correspondence from the common surface rule that mirrors “reverse left and right.”
+
+## Result accumulation
+
+The repository may collect community or personal run results through ordinary Git commits or pull requests.
+
+Recommended publishable layout:
+
+```text
+submissions/<user>/<run_id>/
+  environment.json
+  run.jsonl
+  summary.json
+  summary.md
+```
+
+This is still self-reported data. The project does not certify that a submitted result was honestly produced by a claimed model.
 
 ## Documentation
 
