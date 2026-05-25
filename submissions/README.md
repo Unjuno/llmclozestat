@@ -25,6 +25,23 @@ submissions/<user>/<run_id>/
   summary.md
 ```
 
+## Why user and run IDs matter
+
+Submission paths intentionally include `<user>` and `<run_id>`.
+
+This is not authentication. It is provenance metadata for later analysis.
+
+Keeping submitter and run boundaries makes it possible to:
+
+- aggregate all submissions;
+- filter by user;
+- exclude a suspicious or broken submitter later;
+- compare repeated runs by the same submitter;
+- identify environment-specific anomalies;
+- re-aggregate without modifying raw logs.
+
+If a submitter is later found to be unreliable, analysis tools should be able to exclude that user's directory from aggregate reports.
+
 ## Meaning
 
 Submissions are self-reported measurement logs. They are useful for comparison and analysis, but they are not authenticated proof that a claimed model produced the output.
@@ -37,6 +54,8 @@ Record enough information to understand how the run was produced:
 
 ```json
 {
+  "submitter_id": "github-username-or-local-name",
+  "run_id": "smoke-local-model-20260525",
   "tool_version": "0.0.1",
   "dataset_id": "smoke_v0",
   "model_id": "local-model",
@@ -52,6 +71,16 @@ Record enough information to understand how the run was produced:
 ### run.jsonl
 
 Raw trial records. This is the primary artifact.
+
+Recommended record-level provenance fields:
+
+- `submitter_id`
+- `run_id`
+- `dataset_id`
+- `model_id`
+- `backend`
+- `item_id`
+- `trial_id`
 
 ### summary.json
 
