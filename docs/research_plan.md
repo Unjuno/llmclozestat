@@ -88,7 +88,41 @@ Example:
 task requirements -> relevant probes -> model behavior profile -> model choice
 ```
 
-## 5. Core design
+## 5. Hypotheses and decision conditions
+
+### H1: Model-specific fill distributions
+
+Different models will produce measurably different fill distributions on at least some shared probes.
+
+- PASS: At least one probe shows different dominant fills, pass rates, or repeated wrong-fill patterns across models.
+- FAIL: All tested models show nearly identical fill distributions across all probes.
+- UNCERTAIN: Too few trials, too few probes, or unstable generation settings make the difference unreliable.
+
+### H2: Language-variant effects
+
+The same abstract probe can produce different behavior across language variants.
+
+- PASS: At least one probe shows language-specific differences in `content_pass_rate`, `parse_fail_rate`, or wrong-fill distribution.
+- FAIL: No meaningful language effect appears across comparable variants.
+- UNCERTAIN: Variants are not equivalent enough, or `equivalence_level` is too weak to support comparison.
+
+### H3: Context-distance sensitivity
+
+Some models will perform differently as `context_distance` changes.
+
+- PASS: At least one model shows performance degradation or different wrong-fill patterns from `local`/`sentence` to `cross_sentence`/`long_context` probes.
+- FAIL: Context-distance groups show no detectable difference.
+- UNCERTAIN: Context-distance probes are too few, too heterogeneous, or not controlled enough.
+
+### H4: Format-following difference
+
+Some models will know the content but fail the requested completed-sentence format more often than others.
+
+- PASS: At least one model has a materially higher `item_format_pass_rate` or lower `parse_fail_rate` under the same probes and generation conditions.
+- FAIL: All models behave similarly on format-following metrics.
+- UNCERTAIN: Prompt template changes or fallback extraction rules confound the comparison.
+
+## 6. Core design
 
 ### Probe
 
@@ -117,6 +151,7 @@ An item is one JSON object in `items.jsonl`.
 It contains:
 
 - `validation_target`;
+- `claim_scope`;
 - `text_with_blanks`;
 - `segments`;
 - `blanks`;
@@ -148,7 +183,7 @@ Each run records:
 - backend information;
 - generation parameters.
 
-## 6. Scoring design
+## 7. Scoring design
 
 The system should not collapse results into one score.
 
@@ -186,7 +221,7 @@ Aggregates include:
 
 Repeated fills are counted. If a wrong fill appears repeatedly at the same blank, that repetition is treated as evidence of a systematic tendency.
 
-## 7. Experimental plan
+## 8. Experimental plan
 
 ### Phase 1: Smoke test
 
@@ -244,7 +279,7 @@ Compare:
 - format-following behavior;
 - latency and local execution constraints.
 
-## 8. Data collection workflow
+## 9. Data collection workflow
 
 The intended workflow is local-first:
 
@@ -269,7 +304,7 @@ submissions/<submitter_id>/<run_id>/
 
 Submissions are self-reported and not authenticated. `submitter_id` and `run_id` allow later filtering and re-aggregation.
 
-## 9. Analysis plan
+## 10. Analysis plan
 
 Analysis should avoid broad global claims.
 
@@ -295,7 +330,7 @@ Recommended analysis tables:
 - model x parse_fail_rate;
 - model x item_format_pass_rate.
 
-## 10. Expected contribution
+## 11. Expected contribution
 
 The expected contribution is a reusable evaluation-log framework, not a universal benchmark score.
 
@@ -307,7 +342,7 @@ structured cloze probes + raw JSONL logs + re-aggregatable summaries
 
 can support more detailed model behavior comparison than a single leaderboard-style score.
 
-## 11. Limitations
+## 12. Limitations
 
 The method depends on:
 
@@ -321,7 +356,7 @@ The method depends on:
 
 It does not prove global model quality. It supports scoped claims under documented conditions.
 
-## 12. Near-term milestones
+## 13. Near-term milestones
 
 1. Finalize schema for item/result/environment records.
 2. Implement parser and scorer.
