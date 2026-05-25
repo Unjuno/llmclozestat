@@ -4,6 +4,19 @@
 
 Users clone the repository, run evaluations locally, accumulate raw JSONL logs, aggregate summaries, and optionally prepare a Git submission package.
 
+## Implementation status
+
+This document describes the intended CLI shape. In v0.0, these commands are design targets until implementation is added.
+
+Currently expected commands:
+
+- `version`: minimal existing command.
+- `run`: design target.
+- `aggregate`: design target.
+- `prepare-submission`: design target.
+- `validate`: design target.
+- `report`: design target.
+
 ## Target workflow
 
 ```text
@@ -30,7 +43,10 @@ llmclozestat run \
   --run-id smoke-local-model-20260525 \
   --out results/smoke-local-model-20260525/run.jsonl \
   --temperature 0 \
-  --max-tokens 64
+  --top-p null \
+  --seed null \
+  --max-tokens 64 \
+  --context-window null
 ```
 
 ## Required run metadata
@@ -41,10 +57,20 @@ The run command should make these values explicit or derive them safely:
 - `run_id`
 - `dataset_id`
 - `model_id`
+- `model_source`
+- `quantization`
 - `backend`
+- `backend_version`
 - `provider`
+- `prompt_template_id`
+- `support_mode`
 - `temperature`
+- `top_p`
+- `seed`
 - `max_tokens`
+- `context_window`
+- `repeat_penalty`
+- `stop`
 
 `submitter_id` and `run_id` are not authentication. They are provenance fields for filtering and re-aggregation.
 
@@ -65,6 +91,20 @@ llmclozestat aggregate \
   --exclude-run-id broken-run-001 \
   --out reports/summary.json
 ```
+
+Aggregators should preserve grouping by:
+
+- `model_id`
+- `dataset_id`
+- `probe_id`
+- `variant_id`
+- `language`
+- `item_id`
+- `blank_id`
+- `support_mode`
+- `generation_config`
+- `submitter_id`
+- `run_id`
 
 ## Prepare submission command shape
 
