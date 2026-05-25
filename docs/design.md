@@ -12,6 +12,19 @@ This project is not an official leaderboard. The goal is to observe model behavi
 
 The primary artifact is raw JSONL. Reports and summaries are derived artifacts. A user should be able to re-aggregate results from raw records.
 
+The intended operating model is local-first:
+
+```text
+git clone
+  -> run evaluations locally
+  -> accumulate raw JSONL
+  -> aggregate summaries
+  -> prepare a submission package
+  -> commit or open a pull request
+```
+
+The repository may accumulate submitted results through ordinary Git history. These are self-reported measurement logs, not authenticated model certificates.
+
 ## Scope
 
 ### v0.0
@@ -32,6 +45,7 @@ The primary artifact is raw JSONL. Reports and summaries are derived artifacts. 
 - Add OpenAI-compatible runner for LM Studio and similar local servers.
 - Add lightweight terminal progress display.
 - Add Markdown report generation.
+- Add a command or documented process for preparing `submissions/<user>/<run_id>/` packages.
 
 ### Later
 
@@ -44,12 +58,12 @@ The primary artifact is raw JSONL. Reports and summaries are derived artifacts. 
 
 - Four-choice multiple-choice evaluation.
 - Official leaderboard.
+- Model-output authentication.
 - Anti-tamper design.
 - Signatures or attestations.
 - LLM-as-a-judge scoring.
 - Complex IRT or clustering.
 - Web dashboard.
-- Result collection in this repository.
 
 ## Data flow
 
@@ -63,6 +77,7 @@ items.jsonl
   -> run.jsonl
   -> aggregate summary
   -> report
+  -> optional submission package
 ```
 
 ## Core concepts
@@ -114,4 +129,24 @@ The first backend target is OpenAI-compatible HTTP APIs. This includes LM Studio
 
 ## Result strategy
 
-Local run outputs go under `results/`, which is ignored by Git. Community result collection is expected to move to a separate repository later, if needed.
+There are two result locations:
+
+```text
+results/
+  local scratch outputs, ignored by Git
+
+submissions/<user>/<run_id>/
+  shareable result package, intended for commit or pull request
+```
+
+Recommended submission package:
+
+```text
+submissions/<user>/<run_id>/
+  environment.json
+  run.jsonl
+  summary.json
+  summary.md
+```
+
+Submitted results are self-reported. The project does not authenticate that a claimed model produced a given run.
