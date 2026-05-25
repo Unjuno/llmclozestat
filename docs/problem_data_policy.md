@@ -43,6 +43,33 @@ Every item must include `validation_target` with at least:
 
 Items without a clear validation target should be rejected.
 
+## Claim scope
+
+Items should define what a successful result can and cannot support.
+
+Recommended field:
+
+```json
+{
+  "claim_scope": {
+    "supports_claim": "short Japanese mirror body-correspondence handling under explicit wording",
+    "does_not_support": [
+      "general spatial reasoning",
+      "long-context spatial reasoning",
+      "observer-perspective transformation"
+    ],
+    "required_conditions": [
+      "language=ja",
+      "context_distance=sentence",
+      "explicit body-correspondence wording"
+    ],
+    "generalization_limit": "This item supports only a local claim about this probe variant."
+  }
+}
+```
+
+This prevents overclaiming. Passing one item should not be interpreted as general ability.
+
 ## Responsibility separation
 
 Do not mix every concern into the sentence itself. Problem authoring must separate these responsibilities:
@@ -50,6 +77,7 @@ Do not mix every concern into the sentence itself. Problem authoring must separa
 | Responsibility | Stored in | Purpose |
 |---|---|---|
 | Validation intent | `validation_target` | Explain what the item tests and why it exists. |
+| Claim scope | `claim_scope` | Explain what can and cannot be concluded from the item. |
 | Surface wording | `text_with_blanks` | Provide a human-readable item. |
 | Parser structure | `segments` and `blanks` | Define how fills are extracted. |
 | Scoring rule | `accepted_fills`, `near_miss_fills` | Define what counts as accepted or close. |
@@ -69,12 +97,13 @@ Recommended workflow:
 1. Decide the capability or failure mode to test.
 2. Write the hypothesis.
 3. Write the shortest item that isolates that hypothesis.
-4. Define accepted fills.
-5. Define known wrong or near-miss fills.
-6. Explain what each expected error means.
-7. Check whether a wrong answer would be interpretable.
-8. Decide whether the item needs language variants.
-9. Only then add the item.
+4. Define the claim scope.
+5. Define accepted fills.
+6. Define known wrong or near-miss fills.
+7. Explain what each expected error means.
+8. Check whether a wrong answer would be interpretable.
+9. Decide whether the item needs language variants.
+10. Only then add the item.
 ```
 
 A good item should answer these questions:
@@ -83,6 +112,8 @@ A good item should answer these questions:
 - Why does this item belong in the dataset?
 - What does the accepted fill demonstrate?
 - What would a common wrong fill suggest?
+- What can be concluded if the model passes?
+- What must not be concluded from this item alone?
 - Is the item testing one main thing, or several unrelated things?
 - Can the fill be extracted mechanically from `segments`?
 - Is the result language-dependent?
@@ -214,6 +245,7 @@ An English variant would share `probe_id` but use a different `variant_id`, lang
 13. Do not combine unrelated skills in a single blank.
 14. Prefer one clear validation target per blank.
 15. For multilingual probes, do not assume translated variants are equivalent unless documented.
+16. Record `claim_scope` when an item could be overinterpreted.
 
 ## Required top-level fields
 
@@ -241,6 +273,10 @@ For multilingual variants, also include:
 - `language`
 - `translation_relation`
 - `equivalence_level`
+
+Recommended for interpretation:
+
+- `claim_scope`
 
 ## Required blank fields
 
@@ -319,6 +355,20 @@ Frequency-based statistics count all occurrences. Diversity statistics, such as 
     "hypothesis": "弱いモデルは『鏡は左右反転する』という表層知識に引きずられ、現実の右手に対応するものを左手と誤補完しやすい。",
     "success_condition": "現実の右手に対応する手として『右』を補完する。",
     "why_this_item_exists": "鏡像・左右・視点変換の混同を局所的に観測するため。"
+  },
+  "claim_scope": {
+    "supports_claim": "日本語の短文・明示条件における鏡像の現実身体部位対応を扱えるか。",
+    "does_not_support": [
+      "一般的な空間推論能力",
+      "長距離文脈での空間推論",
+      "鏡の中の人物を正面の別人として見る視点変換"
+    ],
+    "required_conditions": [
+      "language=ja",
+      "context_distance=sentence",
+      "explicit body-correspondence wording"
+    ],
+    "generalization_limit": "このitemは鏡像左右対応の局所probeであり、空間推論全体を代表しない。"
   },
   "text_with_blanks": "あなたが鏡の前で現実の右手を上げる。鏡の中の像で上がっている手は、現実のあなたの（blank_1）手に対応する。",
   "segments": [
