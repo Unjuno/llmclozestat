@@ -39,6 +39,40 @@ Model C has high near-miss rates in technical terminology but low parse-fail rat
 
 This project is designed for the second kind of comparison.
 
+## Scoped capability claims
+
+The project should avoid broad unqualified claims such as:
+
+```text
+This model understands space.
+This model is good at reasoning.
+This model is bad at Japanese.
+```
+
+A stronger claim is scoped by field, probe, language, context condition, and observed failure distribution.
+
+Preferred style:
+
+```text
+Under probe P, in language L, with context condition C, model M shows high content pass rate and low repeated wrong-fill rate.
+```
+
+Or:
+
+```text
+Model M handles vertical/hierarchical spatial identification under condition C, but this evidence only supports that specific condition. It does not prove general spatial understanding.
+```
+
+This matters because a model may appear strong under one condition and weak under another:
+
+- short context vs long context;
+- local blank vs cross-sentence blank;
+- Japanese variant vs English variant;
+- formula completion vs causal explanation;
+- body-correspondence perspective vs observer-perspective perspective.
+
+The correct output is a conditional profile, not a global label.
+
 ## Dimensions of analysis
 
 ### By probe
@@ -169,6 +203,18 @@ It should aim for:
 
 ```text
 model x probe x language x context-length x fill-distribution
+```
+
+The final interpretation should be:
+
+```text
+model x capability x condition
+```
+
+not:
+
+```text
+model x global ability label
 ```
 
 That is the core value of the tool.
