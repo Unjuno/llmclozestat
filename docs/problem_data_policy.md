@@ -43,6 +43,160 @@ Every item must include `validation_target` with at least:
 
 Items without a clear validation target should be rejected.
 
+## Responsibility separation
+
+Do not mix every concern into the sentence itself. Problem authoring must separate these responsibilities:
+
+| Responsibility | Stored in | Purpose |
+|---|---|---|
+| Validation intent | `validation_target` | Explain what the item tests and why it exists. |
+| Surface wording | `text_with_blanks` | Provide a human-readable item. |
+| Parser structure | `segments` and `blanks` | Define how fills are extracted. |
+| Scoring rule | `accepted_fills`, `near_miss_fills` | Define what counts as accepted or close. |
+| Error interpretation | `expected_error_patterns`, `known_wrong_fills` | Explain what repeated wrong fills may mean. |
+| Context dependency | `context_distance`, `depends_on`, `evidence_span` | Explain what information must be used. |
+| Language variant | `language`, `probe_id`, `variant_id`, `translation_relation` | Separate the abstract probe from a language-specific wording. |
+
+A good item should not test many unrelated things at once. If an item needs to test multiple responsibilities, use multiple blanks and assign each blank its own `primary_skill` and error interpretation.
+
+## Probe design workflow
+
+Do not start from a random sentence. Start from a testable reason.
+
+Recommended workflow:
+
+```text
+1. Decide the capability or failure mode to test.
+2. Write the hypothesis.
+3. Write the shortest item that isolates that hypothesis.
+4. Define accepted fills.
+5. Define known wrong or near-miss fills.
+6. Explain what each expected error means.
+7. Check whether a wrong answer would be interpretable.
+8. Decide whether the item needs language variants.
+9. Only then add the item.
+```
+
+A good item should answer these questions:
+
+- What does this item test?
+- Why does this item belong in the dataset?
+- What does the accepted fill demonstrate?
+- What would a common wrong fill suggest?
+- Is the item testing one main thing, or several unrelated things?
+- Can the fill be extracted mechanically from `segments`?
+- Is the result language-dependent?
+- If translated, is the translated item still testing the same thing?
+
+## Multilingual probe design
+
+Many models have different strengths and weaknesses by language. A probe may need multiple language variants.
+
+Do not treat translation as automatic equivalence. A translated item can change difficulty, ambiguity, grammar, cultural assumptions, tokenization, or expected fills.
+
+Use this distinction:
+
+```text
+probe_id:
+  abstract validation target shared across languages
+
+variant_id:
+  concrete language-specific item wording
+```
+
+Recommended fields for language-aware items:
+
+- `probe_id`: stable ID for the abstract probe.
+- `variant_id`: stable ID for this language-specific variant.
+- `language`: BCP-47-style language tag, such as `ja`, `en`, `fr`, `de`, `zh-Hans`.
+- `source_variant_id`: variant this item was derived from, if any.
+- `translation_relation`: `original`, `human_translation`, `adapted_translation`, or `non_equivalent_probe`.
+- `translation_notes`: what changed during translation or adaptation.
+- `equivalence_level`: `strict`, `near`, `adapted`, or `not_equivalent`.
+
+### Equivalence levels
+
+| Level | Meaning |
+|---|---|
+| `strict` | Same validation target, same relevant ambiguity, same expected reasoning. |
+| `near` | Same main target, but wording or grammar changes difficulty slightly. |
+| `adapted` | Same broad skill, but language-specific adaptation changes the exact probe. |
+| `not_equivalent` | Similar topic, but should not be aggregated as the same probe. |
+
+Repository-wide analysis should aggregate by `probe_id` only when language variants are marked `strict` or explicitly accepted as comparable.
+
+Language-specific analysis should aggregate by `language` and `variant_id`.
+
+## Item construction patterns
+
+Items may be factual, mathematical, logical, procedural, causal, spatial, or multilingual. The format is flexible, but the validation target must stay explicit.
+
+### Formula or definition probe
+
+Use this when testing whether the model can complete a formula, definition, or symbolic relation.
+
+Example authoring pattern:
+
+```text
+A rectangle with width w and height h has area （blank_1）.
+```
+
+The item should state whether it tests formula recall, variable-role binding, unit consistency, or symbolic completion. Do not simply add formulas because they look technical.
+
+### Causal or explanatory probe
+
+Use this when testing whether the model can preserve a causal relation.
+
+Example authoring pattern:
+
+```text
+Because the cache reduces repeated database reads, server load tends to （blank_1）.
+```
+
+The item should state the expected causal direction and the common reversal error.
+
+### Procedure or reasoning-step probe
+
+Use this when testing whether the model can complete a required step in a method.
+
+Example authoring pattern:
+
+```text
+Before comparing two measurements, the units should be （blank_1）.
+```
+
+The item should state whether it tests procedural ordering, prerequisite recognition, or method discipline.
+
+### Long-context or dependency probe
+
+Use this when later blanks require earlier context.
+
+Example authoring pattern:
+
+```text
+Mina put the red box on the desk. She moved the blue box to the shelf. The box left on the desk is the （blank_1） box, and the box on the shelf is the （blank_2） box.
+```
+
+Each blank should define `context_distance`, `depends_on` if relevant, and a separate error interpretation.
+
+### Multilingual variant probe
+
+Use this when the same abstract probe should be checked across languages.
+
+Example structure:
+
+```json
+{
+  "probe_id": "mirror_perspective_body_correspondence_0001",
+  "variant_id": "mirror_perspective_body_correspondence_0001.ja",
+  "language": "ja",
+  "translation_relation": "original",
+  "equivalence_level": "strict"
+}
+```
+
+An English variant would share `probe_id` but use a different `variant_id`, language-specific wording, and language-specific accepted fills.
+
 ## Item principles
 
 1. Use cloze tasks, not four-choice tasks.
@@ -57,6 +211,9 @@ Items without a clear validation target should be rejected.
 10. Avoid copied text with unclear rights.
 11. Prefer short, controlled items before long-context items.
 12. Do not add items whose failure interpretation is unclear.
+13. Do not combine unrelated skills in a single blank.
+14. Prefer one clear validation target per blank.
+15. For multilingual probes, do not assume translated variants are equivalent unless documented.
 
 ## Required top-level fields
 
@@ -76,6 +233,14 @@ Early items should include:
 - `ambiguity_level`
 - `source_type`
 - `review_status`
+
+For multilingual variants, also include:
+
+- `probe_id`
+- `variant_id`
+- `language`
+- `translation_relation`
+- `equivalence_level`
 
 ## Required blank fields
 
@@ -139,8 +304,13 @@ Frequency-based statistics count all occurrences. Diversity statistics, such as 
 ```json
 {
   "dataset_id": "smoke_v0",
+  "probe_id": "mirror_perspective_body_correspondence_0001",
+  "variant_id": "mirror_perspective_body_correspondence_0001.ja",
   "item_id": "mirror_perspective_0001",
   "version": "0.0.1",
+  "language": "ja",
+  "translation_relation": "original",
+  "equivalence_level": "strict",
   "item_type": "probe",
   "primary_skill": "spatial_perspective",
   "secondary_tags": ["mirror_reasoning", "left_right", "viewpoint_control"],
