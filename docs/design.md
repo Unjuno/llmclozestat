@@ -45,7 +45,7 @@ The repository may accumulate submitted results through ordinary Git history. Th
 - Add OpenAI-compatible runner for LM Studio and similar local servers.
 - Add lightweight terminal progress display.
 - Add Markdown report generation.
-- Add a command or documented process for preparing `submissions/<user>/<run_id>/` packages.
+- Add a command or documented process for preparing `submissions/<submitter_id>/<run_id>/` packages.
 
 ### Later
 
@@ -135,14 +135,14 @@ There are two result locations:
 results/
   local scratch outputs, ignored by Git
 
-submissions/<user>/<run_id>/
+submissions/<submitter_id>/<run_id>/
   shareable result package, intended for commit or pull request
 ```
 
 Recommended submission package:
 
 ```text
-submissions/<user>/<run_id>/
+submissions/<submitter_id>/<run_id>/
   environment.json
   run.jsonl
   summary.json
