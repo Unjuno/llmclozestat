@@ -12,6 +12,20 @@ This is not an official leaderboard. The goal is to observe model behavior stati
 
 4択問題ではありません。A/B/C/D の選択肢を集計するのではなく、モデルが実際に補った文字列を抽出し、その分布を見ます。
 
+## Implementation status
+
+This repository is still in the v0.0 design and smoke-test phase.
+
+Only the minimal Python package skeleton exists. The `version` command exists, but the following commands are design targets and are not implemented yet:
+
+- `run`
+- `aggregate`
+- `prepare-submission`
+- `validate`
+- `report`
+
+Use the current documentation as the implementation specification, not as a claim that the full CLI already works.
+
 ## Operating model
 
 `llmclozestat` is intended to be a normal local CLI tool.
@@ -32,7 +46,7 @@ git clone
 
 There is no built-in model authentication, result attestation, anti-tamper system, or official result verification. Local outputs are measurement logs for analysis, not certified benchmark records.
 
-Local scratch outputs should go under `results/`, which is ignored by Git. Shareable result packages should be prepared under `submissions/<user>/<run_id>/` and committed or submitted by pull request.
+Local scratch outputs should go under `results/`, which is ignored by Git. Shareable result packages should be prepared under `submissions/<submitter_id>/<run_id>/` and committed or submitted by pull request.
 
 ## Current status
 
@@ -89,7 +103,7 @@ The repository may collect community or personal run results through ordinary Gi
 Recommended publishable layout:
 
 ```text
-submissions/<user>/<run_id>/
+submissions/<submitter_id>/<run_id>/
   environment.json
   run.jsonl
   summary.json
