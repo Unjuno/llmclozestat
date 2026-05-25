@@ -59,6 +59,7 @@ Current repository contents focus on:
 - problem data policy
 - scoring/conceptual model
 - research rationale and plan
+- schemas for item/result/environment records
 - one-item smoke dataset
 - minimal Python package skeleton
 
@@ -121,6 +122,7 @@ This is still self-reported data. The project does not certify that a submitted 
 - `docs/problem_data_policy.md` — rules for authoring probe items
 - `docs/result_format.md` — raw result JSONL and aggregate format
 - `docs/cli_usage.md` — intended CLI workflow and command shapes
+- `schemas/README.md` — schema purpose and validation stance
 
 ## Early development plan
 
