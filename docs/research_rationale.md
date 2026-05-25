@@ -73,6 +73,42 @@ This matters because a model may appear strong under one condition and weak unde
 
 The correct output is a conditional profile, not a global label.
 
+## Task-conditioned model selection
+
+The practical value of this project is that the collected profiles can guide model choice by task.
+
+The goal is not to pick a universally best model. The goal is to choose a model that is strong under the task's actual conditions.
+
+Example decision style:
+
+```text
+For short Japanese factual completion, choose Model A.
+For English technical terminology completion, choose Model B.
+For long-context dependency probes, avoid Model C unless prompt support is added.
+For tasks requiring strict output format, prefer models with low parse-fail and high item-format-pass rates.
+```
+
+A task-conditioned selection rule should consider:
+
+- required language;
+- field or skill;
+- context length;
+- need for strict output format;
+- tolerance for near-miss fills;
+- repeated wrong-fill patterns;
+- latency or local hardware constraints.
+
+This turns evaluation logs into a routing or model-selection aid:
+
+```text
+task requirements
+  -> relevant probes and variants
+  -> model behavior profiles
+  -> model choice for that task
+```
+
+The selection is conditional and revisable. If new probes show a model failing under a condition, future aggregation can change the recommendation.
+
 ## Dimensions of analysis
 
 ### By probe
@@ -173,6 +209,12 @@ A defensible research claim is:
 A reusable cloze-probe framework can reveal model-specific behavior patterns that are hidden by single aggregate scores, including field-specific errors, language-specific errors, context-length sensitivity, format-following failures, and repeated wrong-fill distributions.
 ```
 
+A practical research claim is:
+
+```text
+These behavior profiles can support task-conditioned model selection by matching task requirements to observed model strengths and failure modes.
+```
+
 The claim is stronger than a simple leaderboard claim because it preserves the structure of the errors.
 
 ## Limits
@@ -215,6 +257,12 @@ not:
 
 ```text
 model x global ability label
+```
+
+The practical use should be:
+
+```text
+task x requirements -> model choice under documented evidence
 ```
 
 That is the core value of the tool.
