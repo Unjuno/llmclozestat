@@ -10,6 +10,8 @@ A result record should contain:
 
 ```json
 {
+  "submitter_id": "github-username-or-local-name",
+  "run_id": "smoke-local-model-20260525",
   "dataset_id": "smoke_v0",
   "model_id": "local-model",
   "backend": "openai-compatible",
@@ -47,6 +49,8 @@ A result record should contain:
 
 Recommended identity fields:
 
+- `submitter_id`
+- `run_id`
 - `dataset_id`
 - `model_id`
 - `backend`
@@ -56,6 +60,28 @@ Recommended identity fields:
 - `support_mode`
 
 For repeated trials, do not overwrite earlier rows. Append a new JSONL row.
+
+## Provenance and filtering
+
+`submitter_id` and `run_id` are not authentication fields. They are provenance fields for filtering and re-aggregation.
+
+They allow later analysis to:
+
+- include all submissions;
+- filter by submitter;
+- exclude a suspicious submitter;
+- exclude a broken run;
+- compare repeated runs by the same submitter;
+- keep raw logs unchanged while changing aggregate filters.
+
+Aggregators should support exclusion lists such as:
+
+```json
+{
+  "exclude_submitter_ids": ["example-user"],
+  "exclude_run_ids": ["broken-run-001"]
+}
+```
 
 ## Scoring precedence
 
@@ -169,6 +195,8 @@ Per category:
 - `content_pass_rate`
 - `item_format_pass_rate`
 - `parse_fail_rate`
+
+For repository-wide reports, aggregators should preserve counts by `submitter_id` and `run_id` so results can be recomputed with exclusion filters.
 
 ## Repeated fills
 
