@@ -44,7 +44,7 @@ Current repository contents focus on:
 - result format
 - problem data policy
 - scoring/conceptual model
-- research rationale
+- research rationale and plan
 - one-item smoke dataset
 - minimal Python package skeleton
 
@@ -100,6 +100,7 @@ This is still self-reported data. The project does not certify that a submitted 
 
 ## Documentation
 
+- `docs/research_plan.md` — research and evaluation plan
 - `docs/research_rationale.md` — research value and diagnostic comparison rationale
 - `docs/conceptual_model.md` — conceptual model and scoring design
 - `docs/design.md` — project design and scope
