@@ -55,6 +55,8 @@ The project is in the v0.0 design/smoke-test phase.
 Current repository contents focus on:
 
 - item format
+- prompt design
+- parser and scoring design
 - result format
 - problem data policy
 - validation design
@@ -121,6 +123,8 @@ This is still self-reported data. The project does not certify that a submitted 
 - `docs/conceptual_model.md` — conceptual model and scoring design
 - `docs/design.md` — project design and scope
 - `docs/problem_data_policy.md` — rules for authoring probe items
+- `docs/prompting.md` — prompt templates, support modes, and output contract
+- `docs/parser_scoring.md` — deterministic extraction and scoring rules
 - `docs/result_format.md` — raw result JSONL and aggregate format
 - `docs/validation.md` — validation layers, severity, and command design
 - `docs/cli_usage.md` — intended CLI workflow and command shapes
