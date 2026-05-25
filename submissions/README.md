@@ -9,7 +9,7 @@ git clone
   -> run llmclozestat locally
   -> accumulate raw JSONL under results/
   -> aggregate summaries
-  -> copy or prepare a clean package under submissions/<user>/<run_id>/
+  -> copy or prepare a clean package under submissions/<submitter_id>/<run_id>/
   -> commit or open a pull request
 ```
 
@@ -18,29 +18,29 @@ git clone
 Recommended layout:
 
 ```text
-submissions/<user>/<run_id>/
+submissions/<submitter_id>/<run_id>/
   environment.json
   run.jsonl
   summary.json
   summary.md
 ```
 
-## Why user and run IDs matter
+## Why submitter and run IDs matter
 
-Submission paths intentionally include `<user>` and `<run_id>`.
+Submission paths intentionally include `<submitter_id>` and `<run_id>`.
 
 This is not authentication. It is provenance metadata for later analysis.
 
 Keeping submitter and run boundaries makes it possible to:
 
 - aggregate all submissions;
-- filter by user;
+- filter by submitter;
 - exclude a suspicious or broken submitter later;
 - compare repeated runs by the same submitter;
 - identify environment-specific anomalies;
 - re-aggregate without modifying raw logs.
 
-If a submitter is later found to be unreliable, analysis tools should be able to exclude that user's directory from aggregate reports.
+If a submitter is later found to be unreliable, analysis tools should be able to exclude that submitter's directory from aggregate reports.
 
 ## Meaning
 
@@ -59,10 +59,20 @@ Record enough information to understand how the run was produced:
   "tool_version": "0.0.1",
   "dataset_id": "smoke_v0",
   "model_id": "local-model",
+  "model_source": null,
+  "quantization": null,
   "backend": "openai-compatible",
+  "backend_version": null,
   "provider": "lm_studio",
-  "temperature": 0,
-  "max_tokens": 64,
+  "generation_config": {
+    "temperature": 0,
+    "top_p": null,
+    "seed": null,
+    "max_tokens": 64,
+    "context_window": null,
+    "repeat_penalty": null,
+    "stop": []
+  },
   "os": "Windows 11",
   "hardware": "optional"
 }
@@ -79,6 +89,10 @@ Recommended record-level provenance fields:
 - `dataset_id`
 - `model_id`
 - `backend`
+- `provider`
+- `probe_id`
+- `variant_id`
+- `language`
 - `item_id`
 - `trial_id`
 
