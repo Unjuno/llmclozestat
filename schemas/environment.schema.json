@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Unjuno/llmclozestat/schemas/environment.schema.json",
+  "title": "llmclozestat environment record",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "submitter_id",
+    "run_id",
+    "tool_version",
+    "dataset_id",
+    "model_id",
+    "backend",
+    "provider",
+    "generation_config"
+  ],
+  "properties": {
+    "submitter_id": {"type": "string", "minLength": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "tool_version": {"type": "string", "minLength": 1},
+    "dataset_id": {"type": "string", "minLength": 1},
+    "dataset_version": {"type": ["string", "null"]},
+    "model_id": {"type": "string", "minLength": 1},
+    "model_source": {"type": ["string", "null"]},
+    "quantization": {"type": ["string", "null"]},
+    "backend": {"type": "string", "minLength": 1},
+    "backend_version": {"type": ["string", "null"]},
+    "provider": {"type": "string", "minLength": 1},
+    "base_url": {"type": ["string", "null"]},
+    "prompt_template_id": {"type": ["string", "null"]},
+    "support_mode": {
+      "type": ["string", "null"],
+      "enum": ["zero", "format_shot", "task_shot", "control_shot", "mixed_shot", null]
+    },
+    "generation_config": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["temperature", "max_tokens"],
+      "properties": {
+        "temperature": {"type": ["number", "null"], "minimum": 0},
+        "top_p": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "seed": {"type": ["integer", "null"]},
+        "max_tokens": {"type": "integer", "minimum": 1},
+        "context_window": {"type": ["integer", "null"], "minimum": 1},
+        "repeat_penalty": {"type": ["number", "null"]},
+        "stop": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "os": {"type": ["string", "null"]},
+    "hardware": {"type": ["string", "null"]},
+    "notes": {"type": ["string", "null"]}
+  }
+}
