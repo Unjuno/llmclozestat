@@ -4,6 +4,26 @@
 
 Once the probe definitions, scoring rules, and result format are fixed, different models can be evaluated under the same documented conditions. The goal is not to say only that a model is good or bad. The goal is to describe where and how it behaves differently.
 
+## Problem background
+
+Local LLM users often choose models through reputation, scattered anecdotes, one-off impressions, or individual trial and error.
+
+This creates three problems:
+
+1. The same models are tested repeatedly by different people without a shared result format.
+2. The results are difficult to compare because prompts, tasks, languages, parameters, and hardware differ.
+3. Compute time, user time, and hardware resources are wasted because useful observations are not accumulated in a reusable way.
+
+A local model may be described as good or bad, but in practice the user often needs a narrower answer:
+
+```text
+Is this model good for my task, in this language, under this context length, with this output-format requirement?
+```
+
+`llmclozestat` addresses this by turning local trial-and-error into structured measurement logs.
+
+It does not remove the need to test models. It makes repeated testing reusable.
+
 ## Main advantage
 
 Many evaluations collapse model behavior into a single score. That is useful for rough comparison, but it hides the structure of model behavior.
@@ -200,6 +220,22 @@ Once a probe is created and reviewed, it can be reused across:
 - repeated runs over time.
 
 This makes the probe set a reusable measurement instrument.
+
+## Shared accumulation
+
+The repository can accumulate self-reported local results through normal Git commits or pull requests.
+
+This does not certify that the submitted outputs are honest or authenticated. Its value is different:
+
+```text
+many users' local observations
+  -> common raw JSONL format
+  -> re-aggregatable summaries
+  -> filter by submitter/run if needed
+  -> less duplicated trial-and-error
+```
+
+Even if some runs are later considered suspicious or broken, preserving `submitter_id` and `run_id` allows analysis to exclude them without editing raw logs.
 
 ## What this can support in research
 
