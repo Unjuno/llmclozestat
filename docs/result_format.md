@@ -6,7 +6,7 @@ Reports and summaries are derived artifacts. They should be reproducible from ra
 
 ## Result record
 
-A result record should contain:
+A result record should contain enough item metadata to remain analyzable even when inspected outside the original dataset file.
 
 ```json
 {
@@ -15,17 +15,32 @@ A result record should contain:
   "dataset_id": "smoke_v0",
   "model_id": "local-model",
   "backend": "openai-compatible",
+  "provider": "lm_studio",
+  "probe_id": "mirror_perspective_body_correspondence_0001",
+  "variant_id": "mirror_perspective_body_correspondence_0001.ja",
+  "language": "ja",
+  "primary_skill": "spatial_perspective",
   "item_id": "mirror_perspective_0001",
   "trial_id": 1,
   "prompt_template_id": "fill_full_sentence_v1",
   "support_mode": "zero",
   "f_shot": 0,
+  "generation_config": {
+    "temperature": 0,
+    "top_p": null,
+    "seed": null,
+    "max_tokens": 64,
+    "context_window": null,
+    "stop": []
+  },
   "raw_output": "あなたが鏡の前で現実の右手を上げる。鏡の中の像で上がっている手は、現実のあなたの右手に対応する。",
   "normalized_output": "あなたが鏡の前で現実の右手を上げる。鏡の中の像で上がっている手は、現実のあなたの右手に対応する。",
   "blank_results": [
     {
       "blank_id": "blank_1",
       "position": 1,
+      "primary_skill": "mirror_body_correspondence",
+      "context_distance": "sentence",
       "extracted_fill": "右",
       "fill_class": "accepted",
       "blank_parse_pass": true,
@@ -39,9 +54,7 @@ A result record should contain:
   "item_partial_score": 1.0,
   "format_score_f1": 1.0,
   "format_score_edit": 1.0,
-  "latency_ms": 0,
-  "temperature": 0,
-  "max_tokens": 64
+  "latency_ms": 0
 }
 ```
 
@@ -54,12 +67,30 @@ Recommended identity fields:
 - `dataset_id`
 - `model_id`
 - `backend`
+- `provider`
+- `probe_id`
+- `variant_id`
+- `language`
 - `item_id`
 - `trial_id`
 - `prompt_template_id`
 - `support_mode`
 
 For repeated trials, do not overwrite earlier rows. Append a new JSONL row.
+
+## Why result records duplicate item metadata
+
+A result record should include `probe_id`, `variant_id`, `language`, and relevant skill/context fields even though they can be obtained from the dataset.
+
+Reason:
+
+- submissions may be analyzed outside the original working tree;
+- datasets may evolve;
+- old result records should remain interpretable;
+- repository-wide aggregation should not depend on fragile joins only;
+- language and probe-level filtering should be possible from result logs.
+
+The dataset remains the source of truth for item authoring. The result record stores a run-time copy of key metadata for analysis stability.
 
 ## Provenance and filtering
 
@@ -153,10 +184,25 @@ Aggregates should preserve counts, not only unique fills.
 
 For each model/item/blank/condition, count every extracted fill occurrence.
 
+Recommended grouping keys:
+
+- `model_id`
+- `dataset_id`
+- `probe_id`
+- `variant_id`
+- `language`
+- `item_id`
+- `blank_id`
+- `support_mode`
+- `generation_config`
+
 Example:
 
 ```json
 {
+  "probe_id": "mirror_perspective_body_correspondence_0001",
+  "variant_id": "mirror_perspective_body_correspondence_0001.ja",
+  "language": "ja",
   "item_id": "mirror_perspective_0001",
   "blank_id": "blank_1",
   "n_trials": 10,
@@ -191,7 +237,11 @@ Per item and blank:
 
 Per category:
 
+- `probe_id`
+- `variant_id`
+- `language`
 - `primary_skill`
+- `context_distance`
 - `content_pass_rate`
 - `item_format_pass_rate`
 - `parse_fail_rate`
