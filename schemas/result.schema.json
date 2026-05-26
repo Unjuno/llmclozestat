@@ -23,6 +23,7 @@
     "raw_output",
     "normalized_output",
     "blank_results",
+    "instruction_following_pass",
     "item_format_pass",
     "item_strict_pass",
     "item_partial_score",
@@ -104,6 +105,7 @@
         }
       }
     },
+    "instruction_following_pass": {"type": "boolean"},
     "item_format_pass": {"type": "boolean"},
     "item_strict_pass": {"type": "boolean"},
     "item_partial_score": {"type": "number", "minimum": 0, "maximum": 1},
