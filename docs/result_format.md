@@ -49,6 +49,7 @@ A result record should contain enough item metadata to remain analyzable even wh
       "content_score_f1": 1.0
     }
   ],
+  "instruction_following_pass": true,
   "item_format_pass": true,
   "item_strict_pass": true,
   "item_partial_score": 1.0,
@@ -122,20 +123,30 @@ Use this order when turning a model output into a result record:
 2. Produce `normalized_output` by applying minimal normalization.
 3. Check exact match against `expected_full_texts`.
 4. Try segment-based extraction.
-5. If segment extraction succeeds, classify each extracted fill.
-6. If no fill can be extracted, set `parse_fail = true` for the affected blank.
-7. Compute similarity scores as diagnostic metrics only.
+5. Evaluate whether the model followed the explicit completed-sentence output instruction.
+6. If segment extraction succeeds, classify each extracted fill.
+7. If no fill can be extracted, set `parse_fail = true` for the affected blank.
+8. Compute similarity scores as diagnostic metrics only.
 
 Early versions should prefer segment-based extraction only. Fallback extractors may be added later, but they must store their extraction mode explicitly.
 
-## Format failure and parse failure
+## Instruction following, format failure, and parse failure
 
-`format_fail` and `parse_fail` are different.
+The prompt explicitly asks the model to output the completed full sentence. Therefore, failing to output the completed full sentence is an output-instruction-following failure for this task.
 
-- `format_fail`: the model did not follow the requested completed-sentence format.
-- `parse_fail`: no fill could be extracted for a blank.
+Recommended item-level fields:
 
-A model output may be a format failure while still allowing a fill to be extracted.
+- `instruction_following_pass`: true when the model followed the explicit output contract.
+- `item_format_pass`: true when the whole output follows the requested completed-sentence format.
+- `parse_fail`: blank-level failure to extract a fill.
+
+For v0:
+
+```text
+instruction_following_pass = item_format_pass
+```
+
+This measures compliance with this task's output instruction. It does not claim to measure general instruction-following ability.
 
 Example:
 
@@ -143,9 +154,16 @@ Example:
 答えは右です。
 ```
 
-This is not the requested completed full sentence. It may be `item_format_pass = false`, but if a future fallback extractor extracts `右`, the blank does not have to be `parse_fail`.
+This may contain the right content, but it does not follow the requested completed full-sentence output. In v0, it should usually have:
 
-For v0.0, fallback extraction is not required. Segment-based extraction is the canonical path.
+```json
+{
+  "instruction_following_pass": false,
+  "item_format_pass": false
+}
+```
+
+If no fallback extractor is enabled, it may also produce blank-level `parse_fail = true` because the expected segments are missing.
 
 ## Blank-level scoring
 
@@ -160,9 +178,10 @@ Do not use `format_pass` at the blank level. Use `blank_parse_pass` to avoid con
 
 ## Item-level scoring
 
+- `instruction_following_pass`: true when the model followed the explicit completed-sentence output instruction.
 - `item_format_pass`: true when the whole output follows the requested completed-sentence format.
 - `item_partial_score`: accepted blank count divided by blank count.
-- `item_strict_pass`: true only when all blanks are content-pass and `item_format_pass` is true.
+- `item_strict_pass`: true only when all blanks are content-pass, `instruction_following_pass` is true, and `item_format_pass` is true.
 
 ## Similarity scores
 
@@ -222,6 +241,7 @@ Overall:
 
 - `n_trials`
 - `content_pass_rate`
+- `instruction_following_pass_rate`
 - `item_format_pass_rate`
 - `strict_pass_rate`
 - `parse_fail_rate`
@@ -243,6 +263,7 @@ Per category:
 - `primary_skill`
 - `context_distance`
 - `content_pass_rate`
+- `instruction_following_pass_rate`
 - `item_format_pass_rate`
 - `parse_fail_rate`
 
