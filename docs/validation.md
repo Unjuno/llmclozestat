@@ -141,7 +141,8 @@ Validation code should also check:
 - `blank_results` is non-empty;
 - each `blank_id` appears only once per result record;
 - `item_partial_score` is in `[0, 1]`;
-- `item_strict_pass` is true only if all blank `content_pass` values are true and `item_format_pass` is true;
+- `item_strict_pass` is true only if all blank `content_pass` values are true, `instruction_following_pass` is true, and `item_format_pass` is true;
+- for v0, `instruction_following_pass` should equal `item_format_pass`;
 - `parse_fail = true` implies `blank_parse_pass = false`;
 - `blank_parse_pass = false` should usually imply `extracted_fill = null`;
 - `content_pass = true` should imply `fill_class = accepted` unless later policy allows exceptions;
