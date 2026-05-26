@@ -1,0 +1,28 @@
+{
+  "manifest_version": "0.1",
+  "submitter_id": "example-local",
+  "run_id": "smoke-v0-example-20260526",
+  "created_at": "2026-05-26T00:00:00Z",
+  "hash_algorithm": "sha256",
+  "files": [
+    {
+      "path": "environment.json",
+      "sha256": "782c5558914116911ff083d1c6f5dc3619a5f20129e40aadabe1a43be135aee8"
+    },
+    {
+      "path": "run.jsonl",
+      "sha256": "7741a83e8f2dd1b265229be1b481333eb4c33994846b4e8e2673eee47de2717c"
+    },
+    {
+      "path": "summary.json",
+      "sha256": "acaad7f02cb75f25fceca39ca2388ebec04f158fcb76b905885091c19e55dd7a"
+    },
+    {
+      "path": "summary.md",
+      "sha256": "4ecb3576c089d59648fd87ed4e6bfeefdd6770c480f1fcd8e7c5d01946a284c4"
+    }
+  ],
+  "package_hash": "sha256:d687e195b064efd4fd8ba94e7bd76045ce25ac5c8ff11ff510681186105f02a1",
+  "package_hash_input": "canonical_json(sorted files[path,sha256])",
+  "notes": "Reference example only. Manifest verifies package files, not model execution authenticity."
+}
