@@ -2,7 +2,7 @@
 
 This document defines how `llmclozestat` should parse model outputs and score cloze results.
 
-Parsing and scoring must be deterministic. The same raw output, item, and configuration should produce the same result record.
+Parsing and scoring must be deterministic. The same raw output, item, parser configuration, and scoring configuration should produce the same result record.
 
 ## Goals
 
@@ -11,10 +11,11 @@ Parser and scorer should:
 - preserve raw output;
 - apply minimal normalization;
 - extract fills from completed full-sentence outputs;
+- record the active `extraction_mode`;
 - score each blank independently;
-- distinguish instruction-following failure, format failure, and parse failure;
+- distinguish instruction-following failure, item-format failure, and blank-level parse failure;
 - avoid LLM-based judging in v0.x;
-- record enough information for later aggregation.
+- record enough metadata for later aggregation.
 
 ## Non-goals
 
@@ -46,12 +47,20 @@ The item must contain:
 - `accepted_fills` per blank;
 - `near_miss_fills` per blank.
 
+`parser_config` should record at least:
+
+- `normalization`;
+- `extraction_modes_enabled`;
+- whether Unicode width normalization is enabled;
+- whether fallback extraction is enabled.
+
 ## Outputs
 
 Parser/scorer output becomes one result record containing:
 
 - `raw_output`;
 - `normalized_output`;
+- `extraction_mode`;
 - `blank_results`;
 - `instruction_following_pass`;
 - `item_format_pass`;
@@ -67,11 +76,24 @@ Use this order:
 1. Preserve raw_output exactly.
 2. Normalize minimally.
 3. Check exact match against expected_full_texts.
-4. Try segment-based extraction.
-5. Evaluate output-instruction following.
-6. Classify each blank fill.
-7. Compute item-level scores.
-8. Store diagnostics.
+4. If exact match succeeds, set extraction_mode = exact_full_text.
+5. Otherwise try segment-based extraction.
+6. If segment extraction succeeds, set extraction_mode = segment.
+7. Evaluate output-instruction following.
+8. Classify each blank fill.
+9. Compute item-level scores.
+10. Store diagnostics.
+```
+
+If no extraction method succeeds, affected blanks should use:
+
+```json
+{
+  "blank_parse_pass": false,
+  "parse_fail": true,
+  "extracted_fill": null,
+  "fill_class": "parse_fail"
+}
 ```
 
 ## Normalization
@@ -85,23 +107,13 @@ Recommended v0 normalization:
 - collapse repeated surrounding blank lines;
 - optionally normalize Unicode width only if explicitly configured.
 
-Do not normalize away meaningful content by default.
-
-Do not silently remove explanations, bullet points, or extra answer text. Extra text may be an instruction-following and format failure.
+Do not normalize away meaningful content by default. Extra answer text may be an instruction-following and format failure.
 
 ## Output instruction following
 
 The prompt explicitly instructs the model to output the completed full sentence.
 
-Therefore, failure to output the completed full sentence is not merely a cosmetic formatting issue. It is an output-instruction-following failure under this task.
-
-Recommended field:
-
-```json
-{
-  "instruction_following_pass": true
-}
-```
+Therefore, failure to output the completed full sentence is an output-instruction-following failure under this task.
 
 For v0:
 
@@ -113,18 +125,44 @@ This does not claim to measure general instruction-following ability. It measure
 
 Examples that should usually fail `instruction_following_pass`:
 
-- `答えは右です。`
 - explanations before or after the completed sentence;
 - multiple alternatives;
 - Markdown bullets when not requested;
 - JSON when not requested;
 - only the filled word when the prompt asks for the full sentence.
 
+## Extraction modes
+
+Required result field:
+
+```json
+{
+  "extraction_mode": "segment"
+}
+```
+
+Supported result values:
+
+- `exact_full_text`
+- `segment`
+- `fallback_answer_phrase`
+
+v0 should implement only:
+
+- `exact_full_text`
+- `segment`
+
+`fallback_answer_phrase` is reserved for a later policy and must be grouped separately during aggregation.
+
 ## Exact full-text match
 
-If `normalized_output` exactly matches one entry in `expected_full_texts`, extraction can be marked as successful.
+If `normalized_output` exactly matches one entry in `expected_full_texts`, extraction can be marked as successful with:
 
-For each blank, the accepted fill can be derived from the matching expected full text or from segment extraction.
+```json
+{
+  "extraction_mode": "exact_full_text"
+}
+```
 
 Exact match should imply:
 
@@ -140,7 +178,7 @@ unless a later policy explicitly defines multiple accepted full texts with parti
 
 ## Segment-based extraction
 
-Segment-based extraction is the canonical v0 extraction method.
+Segment-based extraction is the canonical v0 extraction method when exact full-text match does not apply.
 
 For an item with `n` blanks, there must be `n + 1` segments:
 
@@ -150,87 +188,7 @@ segments[0] + fill_1 + segments[1] + fill_2 + ... + fill_n + segments[n]
 
 The parser should find each segment in order inside `normalized_output` and extract the text between adjacent segments.
 
-### One-blank example
-
-Segments:
-
-```json
-[
-  "現実のあなたの",
-  "手に対応する。"
-]
-```
-
-Output:
-
-```text
-現実のあなたの右手に対応する。
-```
-
-Extracted fill:
-
-```text
-右
-```
-
-### Failure cases
-
-If required segments cannot be found in order, segment extraction fails.
-
-If segment extraction fails in v0, the blank should usually be:
-
-```json
-{
-  "blank_parse_pass": false,
-  "parse_fail": true,
-  "extracted_fill": null,
-  "fill_class": "parse_fail"
-}
-```
-
-## Instruction failure vs format failure vs parse failure
-
-These are related but not identical.
-
-### Instruction-following failure
-
-The model did not follow the prompt's explicit output contract.
-
-Example:
-
-```text
-答えは右です。
-```
-
-The content may be identifiable, but the model did not output the completed full sentence.
-
-### Format failure
-
-The output does not match the requested completed-sentence format.
-
-In v0, this usually aligns with instruction-following failure because the instruction is specifically to output the completed full sentence.
-
-### Parse failure
-
-The parser cannot extract a fill for a blank.
-
-In v0, if no fallback extractor is enabled, `答えは右です。` is also likely a parse failure because the required segments are missing.
-
-Later versions may add fallback extraction. If fallback extraction extracts `右`, then:
-
-```text
-instruction_following_pass = false
-item_format_pass = false
-blank_parse_pass = true
-parse_fail = false
-content_pass = true
-```
-
-The extraction mode must be recorded if fallback is used.
-
-## Extraction modes
-
-Recommended field:
+When segment extraction succeeds, store:
 
 ```json
 {
@@ -238,19 +196,30 @@ Recommended field:
 }
 ```
 
-Possible future values:
+For repeated segment text, use a shortest-forward match strategy. If ambiguity remains, mark parse failure rather than guessing.
 
-- `segment`
-- `exact_full_text`
-- `fallback_answer_phrase`
-- `manual_review`
+## Instruction failure vs format failure vs parse failure
 
-v0 should implement only:
+These are related but not identical.
 
-- `exact_full_text`
-- `segment`
+- Instruction-following failure: the model did not follow the prompt's explicit output contract.
+- Format failure: the output does not match the requested completed-sentence format.
+- Parse failure: the parser cannot extract a fill for a blank.
 
-Do not use `manual_review` for normal benchmark aggregation.
+In v0, instruction-following failure and item-format failure usually align because the instruction is specifically to output the completed full sentence.
+
+If fallback extraction is later enabled and extracts a correct fill from a non-compliant output, the result can have:
+
+```text
+instruction_following_pass = false
+item_format_pass = false
+blank_parse_pass = true
+parse_fail = false
+content_pass = true
+extraction_mode = fallback_answer_phrase
+```
+
+Such records must not be mixed with strict v0 extraction records unless grouped by `extraction_mode`.
 
 ## Fill classification
 
@@ -267,14 +236,7 @@ else:
   fill_class = wrong
 ```
 
-`format_fail` may be used when an output fails the required format. However, if a blank-specific fill cannot be extracted, prefer `parse_fail` for that blank.
-
-Recommended rule:
-
-- explicit output-contract problem: use `instruction_following_pass = false`;
-- item-level completed-sentence format problem: use `item_format_pass = false`;
-- blank-level extraction problem: use `fill_class = parse_fail`;
-- extracted but wrong content: use `fill_class = wrong`.
+`format_fail` is reserved for output-contract problems. In v0, prefer item-level `instruction_following_pass = false` and `item_format_pass = false`; if a blank-specific fill cannot be extracted, use `fill_class = parse_fail` for that blank.
 
 ## Content pass
 
@@ -322,13 +284,7 @@ the whole output follows the requested completed-sentence format
 
 In v0 segment extraction, `item_format_pass` should usually be true if all segments are found in order and no significant extra answer wrapper is present.
 
-Potential wrappers that should make `item_format_pass = false` and `instruction_following_pass = false`:
-
-- `答えは...です。`
-- Markdown bullets when not requested;
-- explanations before or after the sentence;
-- multiple alternative answers;
-- JSON output when not requested.
+Potential wrappers should make `item_format_pass = false` and `instruction_following_pass = false`.
 
 ## Similarity scores
 
@@ -342,44 +298,11 @@ Optional metrics:
 
 Do not use similarity scores as the primary pass/fail rule in v0.
 
-## Multi-blank parsing
-
-For multi-blank items, extract fills in order using segments.
-
-The parser must not greedily consume text that prevents later segments from matching.
-
-Recommended implementation strategy:
-
-```text
-for each segment in order:
-  find the next segment occurrence after the current cursor
-  extract the substring between current segment end and next segment start
-```
-
-For repeated segment text, the parser may need a shortest-forward match strategy.
-
-If ambiguity remains, mark parse failure rather than guessing.
-
-## Whitespace around fills
-
-Trim whitespace around extracted fills by default.
-
-Do not remove internal spaces unless configured.
-
-Example:
-
-```text
-" 右 " -> "右"
-"New York" -> "New York"
-```
-
 ## Repeated fills
 
 Do not deduplicate repeated fills across trials.
 
-If the same wrong fill appears 100 times, count it 100 times.
-
-Repeated wrong fills are evidence of a systematic tendency.
+If the same wrong fill appears 100 times, count it 100 times. Repeated wrong fills are evidence of a systematic tendency.
 
 ## Determinism
 
@@ -392,6 +315,8 @@ item + raw_output + parser_config + scoring_config
 ```
 
 The output result record must be the same.
+
+`parser_config` and `extraction_mode` must be recorded enough to explain how the record was produced.
 
 ## Error handling
 
@@ -412,13 +337,13 @@ v0 should implement:
 
 - exact full-text match;
 - segment-based extraction;
+- required `extraction_mode` recording;
 - output-instruction-following flag;
 - explicit accepted/near-miss/wrong classification;
 - item partial score;
 - item strict pass;
 - repeated fill counting;
 - no fallback answer extraction;
-- no LLM judge;
-- no manual review in aggregates.
+- no LLM judge.
 
 This keeps early statistics strict and interpretable.
