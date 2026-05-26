@@ -36,7 +36,9 @@ Examples:
 - invalid `fill_class`;
 - result record missing `submitter_id` or `run_id`;
 - publishable submission missing `manifest.json`;
-- manifest hash mismatch.
+- manifest hash mismatch;
+- current-schema item missing `claim_scope`;
+- one-model submission contains more than one `model_id`.
 
 ### WARNING
 
@@ -44,7 +46,7 @@ A warning means the file can be used, but interpretation may be weak or risky.
 
 Examples:
 
-- `claim_scope` is missing in legacy data;
+- `claim_scope` is missing in explicitly declared legacy data;
 - `expected_error_patterns` is missing;
 - multilingual variant has `equivalence_level = adapted`;
 - `seed` is null;
@@ -85,6 +87,8 @@ schemas/item.schema.json
 ```
 
 This catches missing required fields and basic type errors.
+
+For current schema validation, missing `claim_scope` is an error. For explicitly declared legacy datasets, a compatibility validator may report missing `claim_scope` as a warning instead.
 
 ### Cross-field checks
 
@@ -134,9 +138,15 @@ Input:
 run.jsonl
 ```
 
+or sharded input:
+
+```text
+run-shards/*.jsonl
+```
+
 ### Schema checks
 
-Each line should validate against:
+Each JSONL line should validate against:
 
 ```text
 schemas/result.schema.json
@@ -159,7 +169,7 @@ Validation code should also check:
 - v0 result records should use only `exact_full_text` or `segment` extraction;
 - `support_mode = zero` implies `f_shot = 0`;
 - `support_mode != zero` should usually imply `f_shot >= 1`;
-- `prompt_language`, `prompt_template_id`, and `blank_rendering` are present and stable within a comparable run;
+- `prompt_language`, `prompt_template_id`, `f_shot`, and `blank_rendering` are present and stable within a comparable run;
 - `generation_config_hash`, when present, matches canonical JSON for `generation_config`;
 - `trial_id` is positive;
 - repeated result identity tuples are either rejected or reported.
@@ -167,7 +177,19 @@ Validation code should also check:
 Recommended result identity tuple:
 
 ```text
-submitter_id + run_id + dataset_id + model_id + item_id + trial_id + prompt_template_id + support_mode
+submitter_id
++ run_id
++ dataset_id
++ model_id
++ item_id
++ trial_id
++ prompt_template_id
++ prompt_language
++ support_mode
++ f_shot
++ blank_rendering
++ extraction_mode
++ generation_config_hash
 ```
 
 ### Dataset join checks
@@ -205,10 +227,10 @@ Validation code should check:
 
 - `submitter_id` matches the submission path;
 - `run_id` matches the submission path;
-- `dataset_id` matches `run.jsonl`;
-- `model_id` matches `run.jsonl`;
-- `backend` and `provider` match `run.jsonl`;
-- `prompt_template_id`, `prompt_language`, `support_mode`, and `blank_rendering` match `run.jsonl`;
+- `dataset_id` matches result records;
+- `model_id` matches result records;
+- `backend` and `provider` match result records;
+- `prompt_template_id`, `prompt_language`, `support_mode`, `f_shot`, and `blank_rendering` match result records;
 - `generation_config` is consistent with result records;
 - `parser_config.extraction_modes_enabled` is compatible with result `extraction_mode` values.
 
@@ -226,24 +248,47 @@ Publishable submissions must contain:
 
 ```text
 environment.json
-run.jsonl
 summary.json
 summary.md
 manifest.json
 ```
 
+and one of:
+
+```text
+run.jsonl
+```
+
+or:
+
+```text
+run-shards/*.jsonl
+```
+
 Local scratch results under `results/` may omit `manifest.json`, but such results must be treated as unverified and should not be described as integrity-checked.
+
+### One-model submission policy
+
+MVP submissions should contain exactly one model identity.
+
+The validator should check:
+
+- all result records have the same `model_id`;
+- `environment.json.model_id` matches all result records;
+- if `model.toml` exists in a model repository, `model.toml.model.model_id` matches the submission model ID;
+- a submission package does not mix unrelated quantization or backend identities unless a future policy explicitly allows it.
 
 ### Package checks
 
 The validator should check:
 
 - required files exist;
+- either `run.jsonl` or at least one `run-shards/*.jsonl` file exists;
 - path `<submitter_id>` matches `environment.json.submitter_id`;
 - path `<run_id>` matches `environment.json.run_id`;
-- all `run.jsonl` records use the same `submitter_id` and `run_id`;
-- all `run.jsonl` records use comparable prompt and generation metadata unless intentionally grouped;
-- `summary.json` can be regenerated from `run.jsonl`, or at least declares how it was generated;
+- all result records use the same `submitter_id` and `run_id`;
+- all result records use comparable prompt, parser, and generation metadata unless intentionally grouped by a future policy;
+- `summary.json` can be regenerated from result JSONL, or at least declares how it was generated;
 - `summary.md` is present and human-readable;
 - `manifest.json` exists for publishable submissions;
 - every file listed in `manifest.json` exists;
@@ -284,6 +329,14 @@ llmclozestat validate results \
 ```
 
 If `--dataset` is omitted, only schema and internal consistency checks are possible.
+
+For sharded results:
+
+```bash
+llmclozestat validate results \
+  --input submissions/example/run/run-shards \
+  --dataset datasets/smoke_v0/items.jsonl
+```
 
 ## Environment validation commands
 
