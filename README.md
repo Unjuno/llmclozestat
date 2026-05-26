@@ -51,6 +51,16 @@ There is no built-in proof that a claimed model truly generated a result. Local 
 
 Local scratch outputs should go under `results/`, which is ignored by Git. Shareable result packages should be prepared under `submissions/<submitter_id>/<run_id>/` and committed or submitted by pull request.
 
+For scalable result collection, the preferred long-term data layout is:
+
+```text
+one model repository = one model identity
+one collect command = one model = one run = one submission
+one result PR = one submission package
+```
+
+See `docs/operating_model.md` for model-repository, fixed-condition, PR, CI, report, and storage policies.
+
 ## Current status
 
 The project is in the v0.0 design/smoke-test phase.
@@ -64,6 +74,7 @@ Current repository contents focus on:
 - problem data policy
 - validation design
 - package-level integrity and tamper detection
+- model-repository operating model
 - scoring/conceptual model
 - research rationale and plan
 - schemas for item/result/environment records
@@ -161,12 +172,15 @@ submissions/<submitter_id>/<run_id>/
 
 This is still self-reported data. The project does not certify that a submitted result was honestly produced by a claimed model.
 
+For large or repeated result collection, prefer a separate model repository and keep this core repository focused on the CLI, schemas, documentation, smoke data, and small examples.
+
 ## Documentation
 
 - `docs/research_plan.md` — research and evaluation plan
 - `docs/research_rationale.md` — research value and diagnostic comparison rationale
 - `docs/conceptual_model.md` — conceptual model and scoring design
 - `docs/design.md` — project design and scope
+- `docs/operating_model.md` — model-repository, fixed-condition, PR, CI, report, and storage policies
 - `docs/problem_data_policy.md` — rules for authoring probe items
 - `docs/prompting.md` — prompt templates, support modes, and output contract
 - `docs/parser_scoring.md` — deterministic extraction and scoring rules
