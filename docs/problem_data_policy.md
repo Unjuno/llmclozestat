@@ -43,11 +43,13 @@ Every item must include `validation_target` with at least:
 
 Items without a clear validation target should be rejected.
 
-## Claim scope
+## Required claim scope
 
-Items should define what a successful result can and cannot support.
+Every new item must include `claim_scope`.
 
-Recommended field:
+`claim_scope` defines what a successful result can and cannot support. This is required because the project is designed for scoped behavior claims, not broad global claims about a model.
+
+Required shape:
 
 ```json
 {
@@ -68,7 +70,39 @@ Recommended field:
 }
 ```
 
-This prevents overclaiming. Passing one item should not be interpreted as general ability.
+Passing one item must not be interpreted as general ability.
+
+## Identity fields
+
+Problem identity is layered:
+
+```text
+probe_id    = abstract validation target
+variant_id  = language-specific or wording-specific realization
+item_id     = concrete JSONL item identifier inside a dataset
+```
+
+Rules:
+
+- `probe_id` should remain stable across comparable language variants.
+- `variant_id` should include the probe identity and language or wording variant.
+- `item_id` must be unique inside a dataset.
+- For multilingual variants, `item_id` should include or derive from `variant_id` unless there is a documented reason not to.
+
+Recommended item ID pattern:
+
+```text
+<probe_id>.<language>.item_<serial>
+```
+
+Example:
+
+```text
+mirror_perspective_body_correspondence_0001.ja.item_001
+mirror_perspective_body_correspondence_0001.en.item_001
+```
+
+The existing smoke item keeps its historical `item_id`, but new datasets should use the more explicit pattern.
 
 ## Responsibility separation
 
@@ -85,7 +119,7 @@ Do not mix every concern into the sentence itself. Problem authoring must separa
 | Context dependency | `context_distance`, `depends_on`, `evidence_span` | Explain what information must be used. |
 | Language variant | `language`, `probe_id`, `variant_id`, `translation_relation` | Separate the abstract probe from a language-specific wording. |
 
-A good item should not test many unrelated things at once. If an item needs to test multiple responsibilities, use multiple blanks and assign each blank its own `primary_skill` and error interpretation.
+A good item should not test many unrelated things at once.
 
 ## Probe design workflow
 
@@ -121,19 +155,7 @@ A good item should answer these questions:
 
 ## Multilingual probe design
 
-Many models have different strengths and weaknesses by language. A probe may need multiple language variants.
-
 Do not treat translation as automatic equivalence. A translated item can change difficulty, ambiguity, grammar, cultural assumptions, tokenization, or expected fills.
-
-Use this distinction:
-
-```text
-probe_id:
-  abstract validation target shared across languages
-
-variant_id:
-  concrete language-specific item wording
-```
 
 Recommended fields for language-aware items:
 
@@ -158,106 +180,23 @@ Repository-wide analysis should aggregate by `probe_id` only when language varia
 
 Language-specific analysis should aggregate by `language` and `variant_id`.
 
-## Item construction patterns
-
-Items may be factual, mathematical, logical, procedural, causal, spatial, or multilingual. The format is flexible, but the validation target must stay explicit.
-
-### Formula or definition probe
-
-Use this when testing whether the model can complete a formula, definition, or symbolic relation.
-
-Example authoring pattern:
-
-```text
-A rectangle with width w and height h has area （blank_1）.
-```
-
-The item should state whether it tests formula recall, variable-role binding, unit consistency, or symbolic completion. Do not simply add formulas because they look technical.
-
-### Causal or explanatory probe
-
-Use this when testing whether the model can preserve a causal relation.
-
-Example authoring pattern:
-
-```text
-Because the cache reduces repeated database reads, server load tends to （blank_1）.
-```
-
-The item should state the expected causal direction and the common reversal error.
-
-### Procedure or reasoning-step probe
-
-Use this when testing whether the model can complete a required step in a method.
-
-Example authoring pattern:
-
-```text
-Before comparing two measurements, the units should be （blank_1）.
-```
-
-The item should state whether it tests procedural ordering, prerequisite recognition, or method discipline.
-
-### Long-context or dependency probe
-
-Use this when later blanks require earlier context.
-
-Example authoring pattern:
-
-```text
-Mina put the red box on the desk. She moved the blue box to the shelf. The box left on the desk is the （blank_1） box, and the box on the shelf is the （blank_2） box.
-```
-
-Each blank should define `context_distance`, `depends_on` if relevant, and a separate error interpretation.
-
-### Multilingual variant probe
-
-Use this when the same abstract probe should be checked across languages.
-
-Example structure:
-
-```json
-{
-  "probe_id": "mirror_perspective_body_correspondence_0001",
-  "variant_id": "mirror_perspective_body_correspondence_0001.ja",
-  "language": "ja",
-  "translation_relation": "original",
-  "equivalence_level": "strict"
-}
-```
-
-An English variant would share `probe_id` but use a different `variant_id`, language-specific wording, and language-specific accepted fills.
-
-## Item principles
-
-1. Use cloze tasks, not four-choice tasks.
-2. Ask the model to output the completed full sentence.
-3. Support one or more blanks per item.
-4. Score each blank independently.
-5. Keep `segments.length == blanks.length + 1`.
-6. Each blank must define non-empty `accepted_fills`.
-7. Use `near_miss_fills` only for manually declared close-but-not-accepted fills.
-8. Record expected error patterns when known.
-9. Avoid latest-news or time-sensitive facts in early datasets.
-10. Avoid copied text with unclear rights.
-11. Prefer short, controlled items before long-context items.
-12. Do not add items whose failure interpretation is unclear.
-13. Do not combine unrelated skills in a single blank.
-14. Prefer one clear validation target per blank.
-15. For multilingual probes, do not assume translated variants are equivalent unless documented.
-16. Record `claim_scope` when an item could be overinterpreted.
-
 ## Required top-level fields
 
-Early items should include:
+Items must include:
 
 - `dataset_id`
+- `probe_id`
+- `variant_id`
 - `item_id`
 - `version`
+- `language`
+- `translation_relation`
+- `equivalence_level`
 - `item_type`
 - `primary_skill`
 - `secondary_tags`
 - `validation_target`
+- `claim_scope`
 - `text_with_blanks`
 - `segments`
 - `blanks`
@@ -266,21 +205,9 @@ Early items should include:
 - `source_type`
 - `review_status`
 
-For multilingual variants, also include:
-
-- `probe_id`
-- `variant_id`
-- `language`
-- `translation_relation`
-- `equivalence_level`
-
-Recommended for interpretation:
-
-- `claim_scope`
-
 ## Required blank fields
 
-Each blank should include:
+Each blank must include:
 
 - `blank_id`
 - `position`
@@ -295,6 +222,16 @@ Recommended fields:
 - `context_distance`
 - `depends_on`
 - `evidence_span`
+
+If `known_wrong_fills` is non-empty, `expected_error_patterns` should normally explain at least the important expected wrong fills.
+
+## Fill lists
+
+- `accepted_fills` must be non-empty.
+- `near_miss_fills` contains close but not accepted fills.
+- `known_wrong_fills` contains expected wrong fills useful for interpretation.
+- Repeated strings inside a fill list should be rejected.
+- Normalized duplicates should be detected by validation code, not only by schema.
 
 ## Multi-blank items
 
@@ -324,7 +261,7 @@ Early versions use these classes:
 - `accepted`: the extracted fill is in `accepted_fills`.
 - `near_miss`: the extracted fill is in `near_miss_fills`.
 - `wrong`: the fill is extracted but not accepted or near-miss.
-- `format_fail`: the output does not follow the requested completed-sentence format.
+- `format_fail`: reserved for output-contract problems.
 - `parse_fail`: the fill cannot be extracted.
 
 Do not use LLM judging in v0.x. Prefer explicit accepted and near-miss lists.
@@ -337,60 +274,10 @@ Frequency-based statistics count all occurrences. Diversity statistics, such as 
 
 ## Example item
 
-```json
-{
-  "dataset_id": "smoke_v0",
-  "probe_id": "mirror_perspective_body_correspondence_0001",
-  "variant_id": "mirror_perspective_body_correspondence_0001.ja",
-  "item_id": "mirror_perspective_0001",
-  "version": "0.0.1",
-  "language": "ja",
-  "translation_relation": "original",
-  "equivalence_level": "strict",
-  "item_type": "probe",
-  "primary_skill": "spatial_perspective",
-  "secondary_tags": ["mirror_reasoning", "left_right", "viewpoint_control"],
-  "validation_target": {
-    "main_question": "モデルが鏡像における現実の身体部位との対応を正しく扱えるか。",
-    "hypothesis": "弱いモデルは『鏡は左右反転する』という表層知識に引きずられ、現実の右手に対応するものを左手と誤補完しやすい。",
-    "success_condition": "現実の右手に対応する手として『右』を補完する。",
-    "why_this_item_exists": "鏡像・左右・視点変換の混同を局所的に観測するため。"
-  },
-  "claim_scope": {
-    "supports_claim": "日本語の短文・明示条件における鏡像の現実身体部位対応を扱えるか。",
-    "does_not_support": [
-      "一般的な空間推論能力",
-      "長距離文脈での空間推論",
-      "鏡の中の人物を正面の別人として見る視点変換"
-    ],
-    "required_conditions": [
-      "language=ja",
-      "context_distance=sentence",
-      "explicit body-correspondence wording"
-    ],
-    "generalization_limit": "このitemは鏡像左右対応の局所probeであり、空間推論全体を代表しない。"
-  },
-  "text_with_blanks": "あなたが鏡の前で現実の右手を上げる。鏡の中の像で上がっている手は、現実のあなたの（blank_1）手に対応する。",
-  "segments": [
-    "あなたが鏡の前で現実の右手を上げる。鏡の中の像で上がっている手は、現実のあなたの",
-    "手に対応する。"
-  ],
-  "blanks": [
-    {
-      "blank_id": "blank_1",
-      "position": 1,
-      "primary_skill": "mirror_body_correspondence",
-      "context_distance": "sentence",
-      "accepted_fills": ["右"],
-      "near_miss_fills": [],
-      "known_wrong_fills": ["左", "反対"]
-    }
-  ],
-  "expected_full_texts": [
-    "あなたが鏡の前で現実の右手を上げる。鏡の中の像で上がっている手は、現実のあなたの右手に対応する。"
-  ],
-  "ambiguity_level": "low",
-  "source_type": "human_designed",
-  "review_status": "reviewed"
-}
+The smoke dataset contains the current reference example:
+
+```text
+datasets/smoke_v0/items.jsonl
 ```
+
+New examples should follow the required-field list above and use explicit `claim_scope` and stable identity fields.
