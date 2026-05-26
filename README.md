@@ -68,6 +68,7 @@ Current repository contents focus on:
 - research rationale and plan
 - schemas for item/result/environment records
 - one-item smoke dataset
+- schema-compliant reference examples
 - minimal Python package skeleton
 
 The first dataset, `smoke_v0`, is intentionally small. It is for validating the pipeline and collecting local probe statistics, not for broad model evaluation.
@@ -127,6 +128,21 @@ See:
 - `datasets/smoke_v0/README.md`
 
 The first item is a mirror-perspective probe. It tests whether a model can distinguish actual body-part correspondence from the common surface rule that mirrors “reverse left and right.”
+
+## Reference example package
+
+See:
+
+- `examples/smoke_v0/README.md`
+- `examples/smoke_v0/environment.json`
+- `examples/smoke_v0/run.jsonl`
+- `examples/smoke_v0/summary.json`
+- `examples/smoke_v0/summary.md`
+- `examples/smoke_v0/manifest.json`
+
+This example is schema-compliant and intended as a fixture for implementing validation, parser/scorer output, aggregation, and manifest verification.
+
+It is not a real benchmark result.
 
 ## Result accumulation
 
