@@ -22,6 +22,7 @@ Only the minimal Python package skeleton exists. The `version` command exists, b
 - `aggregate`
 - `prepare-submission`
 - `validate`
+- `verify-integrity`
 - `report`
 
 Use the current documentation as the implementation specification, not as a claim that the full CLI already works.
@@ -39,12 +40,13 @@ git clone
   -> run against a local or OpenAI-compatible model endpoint
   -> append raw JSONL records
   -> aggregate summaries
+  -> prepare a manifest for package-level tamper detection
   -> inspect reports
   -> repeat
   -> commit or open a PR when enough results are collected
 ```
 
-There is no built-in model authentication, result attestation, anti-tamper system, or official result verification. Local outputs are measurement logs for analysis, not certified benchmark records.
+There is no built-in proof that a claimed model truly generated a result. Local outputs are measurement logs for analysis, not certified benchmark records.
 
 Local scratch outputs should go under `results/`, which is ignored by Git. Shareable result packages should be prepared under `submissions/<submitter_id>/<run_id>/` and committed or submitted by pull request.
 
@@ -60,6 +62,7 @@ Current repository contents focus on:
 - result format
 - problem data policy
 - validation design
+- package-level integrity and tamper detection
 - scoring/conceptual model
 - research rationale and plan
 - schemas for item/result/environment records
@@ -81,13 +84,18 @@ cloze item
 
 Repeated fills are counted. If a model gives the same wrong fill at the same blank multiple times, those repetitions are treated as evidence of a systematic tendency, not as duplicates to remove.
 
+## Integrity boundary
+
+`llmclozestat` may support package-level integrity checks through `manifest.json`.
+
+This can detect later changes to submitted files. It does not prove that the claimed model generated the outputs.
+
 ## What this is not
 
 - Not a four-choice benchmark.
 - Not an official leaderboard.
-- Not an authentication system for LLM outputs.
-- Not an anti-tamper evaluation system.
-- Not a signed-result or attestation framework.
+- Not an authentication system for model execution.
+- Not proof that a claimed model truly generated a result.
 - Not an LLM-judge scoring framework.
 - Not a web dashboard.
 
@@ -112,6 +120,7 @@ submissions/<submitter_id>/<run_id>/
   run.jsonl
   summary.json
   summary.md
+  manifest.json
 ```
 
 This is still self-reported data. The project does not certify that a submitted result was honestly produced by a claimed model.
@@ -127,6 +136,7 @@ This is still self-reported data. The project does not certify that a submitted 
 - `docs/parser_scoring.md` — deterministic extraction and scoring rules
 - `docs/result_format.md` — raw result JSONL and aggregate format
 - `docs/validation.md` — validation layers, severity, and command design
+- `docs/integrity.md` — package-level integrity and tamper detection
 - `docs/cli_usage.md` — intended CLI workflow and command shapes
 - `schemas/README.md` — schema purpose and validation stance
 
@@ -136,9 +146,10 @@ This is still self-reported data. The project does not certify that a submitted 
 2. Implement parser and scorer.
 3. Implement basic aggregation.
 4. Add validation for item/result files.
-5. Add OpenAI-compatible runner for LM Studio and similar local servers.
-6. Add lightweight terminal progress display.
-7. Add Markdown report generation.
+5. Add package manifest and local integrity verification.
+6. Add OpenAI-compatible runner for LM Studio and similar local servers.
+7. Add lightweight terminal progress display.
+8. Add Markdown report generation.
 
 ## License
 
