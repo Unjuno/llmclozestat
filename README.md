@@ -38,9 +38,10 @@ git clone
   -> install CLI locally
   -> choose a dataset
   -> run against a local or OpenAI-compatible model endpoint
-  -> append raw JSONL records
+  -> append raw JSONL records under results/
   -> aggregate summaries
-  -> prepare a manifest for package-level tamper detection
+  -> prepare a publishable submission package
+  -> write manifest.json for package-level tamper detection
   -> inspect reports
   -> repeat
   -> commit or open a PR when enough results are collected
@@ -84,11 +85,29 @@ cloze item
 
 Repeated fills are counted. If a model gives the same wrong fill at the same blank multiple times, those repetitions are treated as evidence of a systematic tendency, not as duplicates to remove.
 
+## Required result metadata
+
+Result records must preserve the experimental conditions needed for later re-aggregation.
+
+Important fields include:
+
+- `prompt_template_id`
+- `prompt_language`
+- `support_mode`
+- `f_shot`
+- `blank_rendering`
+- `extraction_mode`
+- `generation_config` or `generation_config_hash`
+
+These fields prevent prompt changes, blank rendering changes, fallback extraction, or generation parameter differences from being mistaken for model behavior differences.
+
 ## Integrity boundary
 
-`llmclozestat` may support package-level integrity checks through `manifest.json`.
+`llmclozestat` supports package-level integrity checks through `manifest.json` for publishable submissions.
 
 This can detect later changes to submitted files. It does not prove that the claimed model generated the outputs.
+
+`manifest.json` is required for publishable submissions under `submissions/<submitter_id>/<run_id>/`. Local scratch results under `results/` may omit it, but they should be treated as unverified.
 
 ## What this is not
 
@@ -96,6 +115,7 @@ This can detect later changes to submitted files. It does not prove that the cla
 - Not an official leaderboard.
 - Not an authentication system for model execution.
 - Not proof that a claimed model truly generated a result.
+- Not an execution attestation system.
 - Not an LLM-judge scoring framework.
 - Not a web dashboard.
 
