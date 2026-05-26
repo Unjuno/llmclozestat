@@ -12,6 +12,12 @@
     "model_id",
     "backend",
     "provider",
+    "prompt_template_id",
+    "prompt_language",
+    "support_mode",
+    "f_shot",
+    "blank_rendering",
+    "parser_config",
     "generation_config"
   ],
   "properties": {
@@ -27,10 +33,32 @@
     "backend_version": {"type": ["string", "null"]},
     "provider": {"type": "string", "minLength": 1},
     "base_url": {"type": ["string", "null"]},
-    "prompt_template_id": {"type": ["string", "null"]},
+    "prompt_template_id": {"type": "string", "minLength": 1},
+    "prompt_language": {"type": "string", "minLength": 2},
     "support_mode": {
-      "type": ["string", "null"],
-      "enum": ["zero", "format_shot", "task_shot", "control_shot", "mixed_shot", null]
+      "type": "string",
+      "enum": ["zero", "format_shot", "task_shot", "control_shot", "mixed_shot"]
+    },
+    "f_shot": {"type": "integer", "minimum": 0},
+    "blank_rendering": {"type": "string", "minLength": 1},
+    "parser_config": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["normalization", "extraction_modes_enabled"],
+      "properties": {
+        "normalization": {"type": "string", "minLength": 1},
+        "extraction_modes_enabled": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["exact_full_text", "segment", "fallback_answer_phrase"]
+          }
+        },
+        "unicode_width_normalization": {"type": ["boolean", "null"]},
+        "fallback_extraction_enabled": {"type": ["boolean", "null"]}
+      }
     },
     "generation_config": {
       "type": "object",
@@ -49,6 +77,7 @@
         }
       }
     },
+    "generation_config_hash": {"type": ["string", "null"]},
     "os": {"type": ["string", "null"]},
     "hardware": {"type": ["string", "null"]},
     "notes": {"type": ["string", "null"]}
