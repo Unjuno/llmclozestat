@@ -17,6 +17,7 @@
     "primary_skill",
     "secondary_tags",
     "validation_target",
+    "claim_scope",
     "text_with_blanks",
     "segments",
     "blanks",
@@ -46,7 +47,8 @@
     "primary_skill": {"type": "string", "minLength": 1},
     "secondary_tags": {
       "type": "array",
-      "items": {"type": "string"}
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
     },
     "validation_target": {
       "type": "object",
@@ -62,17 +64,22 @@
     "claim_scope": {
       "type": "object",
       "additionalProperties": true,
+      "required": ["supports_claim", "does_not_support", "required_conditions", "generalization_limit"],
       "properties": {
-        "supports_claim": {"type": "string"},
+        "supports_claim": {"type": "string", "minLength": 1},
         "does_not_support": {
           "type": "array",
-          "items": {"type": "string"}
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
         },
         "required_conditions": {
           "type": "array",
-          "items": {"type": "string"}
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
         },
-        "generalization_limit": {"type": "string"}
+        "generalization_limit": {"type": "string", "minLength": 1}
       }
     },
     "text_with_blanks": {"type": "string", "minLength": 1},
@@ -95,15 +102,18 @@
           "accepted_fills": {
             "type": "array",
             "minItems": 1,
+            "uniqueItems": true,
             "items": {"type": "string", "minLength": 1}
           },
           "near_miss_fills": {
             "type": "array",
+            "uniqueItems": true,
             "items": {"type": "string"}
           },
           "known_wrong_fills": {
             "type": "array",
-            "items": {"type": "string"}
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
           },
           "expected_error_patterns": {
             "type": "array",
@@ -112,8 +122,8 @@
               "additionalProperties": true,
               "required": ["fill", "interpretation"],
               "properties": {
-                "fill": {"type": "string"},
-                "interpretation": {"type": "string"}
+                "fill": {"type": "string", "minLength": 1},
+                "interpretation": {"type": "string", "minLength": 1}
               }
             }
           },
@@ -123,7 +133,8 @@
           },
           "depends_on": {
             "type": "array",
-            "items": {"type": "string"}
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
           },
           "evidence_span": {"type": "string"}
         }
@@ -132,6 +143,7 @@
     "expected_full_texts": {
       "type": "array",
       "minItems": 1,
+      "uniqueItems": true,
       "items": {"type": "string", "minLength": 1}
     },
     "ambiguity_level": {
