@@ -56,6 +56,7 @@ It records:
 - format-following failures;
 - language-specific behavior;
 - context-distance effects;
+- prompt and parser conditions;
 - submitter and run provenance.
 
 ## 4. Research questions
@@ -75,7 +76,7 @@ Can model behavior be described as a conditional profile rather than a global la
 Example:
 
 ```text
-model x probe x language x context-distance x fill-distribution
+model x probe x language x context-distance x output-behavior x fill-distribution
 ```
 
 ### RQ4: Task-conditioned model selection
@@ -120,29 +121,25 @@ Some models will know the content but fail the requested completed-sentence form
 
 - PASS: At least one model has a materially higher `item_format_pass_rate` or lower `parse_fail_rate` under the same probes and generation conditions.
 - FAIL: All models behave similarly on format-following metrics.
-- UNCERTAIN: Prompt template changes or fallback extraction rules confound the comparison.
+- UNCERTAIN: Prompt template changes, blank rendering changes, or fallback extraction rules confound the comparison.
 
 ## 6. Core design
 
 ### Probe
 
-A probe is the abstract validation target.
-
-It defines what is being tested and why the item exists.
+A probe is the abstract validation target. It defines what is being tested and why the item exists.
 
 ### Variant
 
-A variant is a language-specific or wording-specific realization of a probe.
+A variant is a language-specific or wording-specific realization of a probe. Variants must not be assumed equivalent without documentation.
 
-A probe may have variants such as:
+Each variant records:
 
-```text
-probe_id.ja
-probe_id.en
-probe_id.fr
-```
-
-Variants must not be assumed equivalent without documentation.
+- `probe_id`;
+- `variant_id`;
+- `language`;
+- `translation_relation`;
+- `equivalence_level`.
 
 ### Item
 
@@ -181,7 +178,19 @@ Each run records:
 - model information;
 - dataset information;
 - backend information;
+- prompt metadata;
+- parser metadata;
 - generation parameters.
+
+Prompt and parser metadata include:
+
+- `prompt_template_id`;
+- `prompt_language`;
+- `support_mode`;
+- `f_shot`;
+- `blank_rendering`;
+- `extraction_mode`;
+- `generation_config` or `generation_config_hash`.
 
 ## 7. Scoring design
 
@@ -201,6 +210,7 @@ Each blank records:
 
 Each item records:
 
+- `instruction_following_pass`;
 - `item_format_pass`;
 - `item_partial_score`;
 - `item_strict_pass`.
@@ -210,6 +220,7 @@ Each item records:
 Aggregates include:
 
 - `content_pass_rate`;
+- `instruction_following_pass_rate`;
 - `item_format_pass_rate`;
 - `strict_pass_rate`;
 - `parse_fail_rate`;
@@ -277,6 +288,7 @@ Compare:
 - language effects;
 - context-distance effects;
 - format-following behavior;
+- prompt and parser condition effects;
 - latency and local execution constraints.
 
 ## 9. Data collection workflow
@@ -289,10 +301,11 @@ git clone
   -> store raw JSONL under results/
   -> aggregate locally
   -> prepare submissions/<submitter_id>/<run_id>/
+  -> write manifest.json for publishable submissions
   -> commit or open a pull request
 ```
 
-Recommended shareable package:
+Recommended publishable package:
 
 ```text
 submissions/<submitter_id>/<run_id>/
@@ -300,9 +313,12 @@ submissions/<submitter_id>/<run_id>/
   run.jsonl
   summary.json
   summary.md
+  manifest.json
 ```
 
 Submissions are self-reported and not authenticated. `submitter_id` and `run_id` allow later filtering and re-aggregation.
+
+`manifest.json` supports package-level tamper detection only. It does not prove that the claimed model generated the outputs.
 
 ## 10. Analysis plan
 
@@ -317,7 +333,7 @@ Model A is good.
 Preferred claim:
 
 ```text
-Under probe P, language L, and context condition C, Model A shows high content pass rate and low repeated wrong-fill rate.
+Under probe P, language L, prompt condition T, parser condition E, and context condition C, Model A shows high content pass rate and low repeated wrong-fill rate.
 ```
 
 Recommended analysis tables:
@@ -326,6 +342,9 @@ Recommended analysis tables:
 - model x language;
 - model x context_distance;
 - model x primary_skill;
+- model x prompt_template_id;
+- model x support_mode;
+- model x extraction_mode;
 - model x fill_distribution;
 - model x parse_fail_rate;
 - model x item_format_pass_rate.
@@ -348,8 +367,10 @@ The method depends on:
 
 - probe quality;
 - clear validation targets;
+- explicit claim scopes;
 - enough trials;
 - stable generation parameters;
+- stable prompt and parser conditions;
 - language variant equivalence;
 - careful interpretation;
 - raw log preservation.
@@ -364,4 +385,5 @@ It does not prove global model quality. It supports scoped claims under document
 4. Add validation commands.
 5. Add OpenAI-compatible local runner.
 6. Add submission package preparation.
-7. Expand probes by skill, language, and context condition.
+7. Add manifest generation and integrity verification for publishable submissions.
+8. Expand probes by skill, language, and context condition.
