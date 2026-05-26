@@ -25,6 +25,8 @@ git clone
 
 The repository may accumulate submitted results through ordinary Git history. These are self-reported measurement logs, not authenticated model certificates.
 
+Package-level manifest hashing is in scope for publishable submissions. It is used only for post-packaging tamper detection. It does not authenticate model execution and does not prove that a claimed model produced a result.
+
 ## Scope
 
 ### v0.0
@@ -46,6 +48,7 @@ The repository may accumulate submitted results through ordinary Git history. Th
 - Add lightweight terminal progress display.
 - Add Markdown report generation.
 - Add a command or documented process for preparing `submissions/<submitter_id>/<run_id>/` packages.
+- Add package-level manifest generation and local integrity verification for publishable submissions.
 
 ### Later
 
@@ -59,11 +62,26 @@ The repository may accumulate submitted results through ordinary Git history. Th
 - Four-choice multiple-choice evaluation.
 - Official leaderboard.
 - Model-output authentication.
-- Anti-tamper design.
-- Signatures or attestations.
+- Model execution attestation.
+- Proof that a claimed model truly generated a result.
+- Mandatory signatures.
+- Per-trial ledger anchoring.
 - LLM-as-a-judge scoring.
 - Complex IRT or clustering.
 - Web dashboard.
+
+## Integrity boundary
+
+The project distinguishes these concepts:
+
+| Concept | In scope? | Meaning |
+|---|---:|---|
+| Model authentication | No | Proving that a claimed model generated a result. |
+| Execution attestation | No | Proving the local runtime, backend, or model file was honest. |
+| Package tamper detection | Yes | Detecting later changes to a prepared submission package. |
+| Optional signatures | Later | Showing that a key holder claimed responsibility for a package hash. |
+
+A verified manifest means the submitted files still match the package hash. It does not mean the run was honestly produced.
 
 ## Data flow
 
@@ -78,6 +96,7 @@ items.jsonl
   -> aggregate summary
   -> report
   -> optional submission package
+  -> manifest.json for publishable submissions
 ```
 
 ## Core concepts
@@ -119,9 +138,10 @@ Do not use `format_pass` at the blank level. Format is an item-level property; e
 
 ### Item-level
 
+- `instruction_following_pass`: whether the explicit completed-sentence output instruction was followed.
 - `item_format_pass`: whether the whole output followed the requested completed-sentence format.
 - `item_partial_score`: accepted blank count divided by blank count.
-- `item_strict_pass`: true only when all blanks pass content and `item_format_pass` is true.
+- `item_strict_pass`: true only when all blanks pass content, `instruction_following_pass` is true, and `item_format_pass` is true.
 
 ## Provider strategy
 
@@ -136,10 +156,10 @@ results/
   local scratch outputs, ignored by Git
 
 submissions/<submitter_id>/<run_id>/
-  shareable result package, intended for commit or pull request
+  publishable result package, intended for commit or pull request
 ```
 
-Recommended submission package:
+Recommended publishable submission package:
 
 ```text
 submissions/<submitter_id>/<run_id>/
@@ -147,6 +167,9 @@ submissions/<submitter_id>/<run_id>/
   run.jsonl
   summary.json
   summary.md
+  manifest.json
 ```
 
 Submitted results are self-reported. The project does not authenticate that a claimed model produced a given run.
+
+`manifest.json` is required for publishable submissions and optional for local scratch results. If a submission intentionally omits `manifest.json`, reports should mark it as unverified rather than treating it as integrity-checked.
