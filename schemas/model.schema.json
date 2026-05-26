@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/llmclozestat/schemas/model.schema.json",
+  "title": "llmclozestat model repository metadata",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "model",
+    "policy"
+  ],
+  "properties": {
+    "model": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "model_id",
+        "family",
+        "source",
+        "source_repo",
+        "revision",
+        "quantization",
+        "backend"
+      ],
+      "properties": {
+        "model_id": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "description": "Stable model identity used by result records in this model repository."
+        },
+        "family": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Model family or lineage, such as qwen, llama, gemma, mistral."
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Source type, such as huggingface, local, vendor, converted, unknown."
+        },
+        "source_repo": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Source repository or local source label. Use unknown only when the source cannot be identified."
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Source revision, commit, tag, release, or unknown."
+        },
+        "quantization": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Quantization or precision label, such as FP16, Q8_0, Q4_K_M, unknown."
+        },
+        "backend": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Runtime backend, such as lm_studio, llama_cpp, ollama, openai_compatible, unknown."
+        },
+        "backend_version": {
+          "type": ["string", "null"],
+          "description": "Backend version when known."
+        },
+        "context_window": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "description": "Configured context window if known."
+        },
+        "notes": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "policy": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "one_model_repo"
+      ],
+      "properties": {
+        "one_model_repo": {
+          "const": true,
+          "description": "Model repositories should contain results for exactly one model identity."
+        },
+        "allow_mixed_model_ids": {
+          "type": "boolean",
+          "default": false,
+          "description": "Reserved escape hatch. MVP validation should treat true as unsupported unless explicitly allowed."
+        }
+      }
+    },
+    "default_condition": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "prompt": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": [
+            "prompt_template_id",
+            "prompt_language",
+            "support_mode",
+            "f_shot",
+            "blank_rendering"
+          ],
+          "properties": {
+            "prompt_template_id": {"type": "string", "minLength": 1},
+            "prompt_language": {"type": "string", "minLength": 1},
+            "support_mode": {
+              "type": "string",
+              "enum": ["zero", "format_shot", "task_shot", "control_shot", "mixed_shot"]
+            },
+            "f_shot": {"type": "integer", "minimum": 0},
+            "blank_rendering": {"type": "string", "minLength": 1}
+          }
+        },
+        "generation": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "temperature": {"type": ["number", "null"], "minimum": 0},
+            "top_p": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+            "seed": {"type": ["integer", "null"]},
+            "max_tokens": {"type": ["integer", "null"], "minimum": 1},
+            "repeat_penalty": {"type": ["number", "null"]}
+          }
+        },
+        "parser": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "normalization": {"type": "string", "minLength": 1},
+            "extraction_modes_enabled": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1
+            },
+            "fallback_extraction_enabled": {"type": "boolean"}
+          }
+        }
+      }
+    }
+  }
+}
