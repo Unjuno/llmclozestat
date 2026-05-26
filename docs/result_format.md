@@ -6,7 +6,7 @@ Reports and summaries are derived artifacts. They should be reproducible from ra
 
 ## Result record
 
-A result record should contain enough item metadata to remain analyzable even when inspected outside the original dataset file.
+A result record should contain enough item metadata, prompt metadata, parser metadata, and run metadata to remain analyzable even when inspected outside the original dataset file.
 
 ```json
 {
@@ -22,9 +22,11 @@ A result record should contain enough item metadata to remain analyzable even wh
   "primary_skill": "spatial_perspective",
   "item_id": "mirror_perspective_0001",
   "trial_id": 1,
-  "prompt_template_id": "fill_full_sentence_v1",
+  "prompt_template_id": "fill_full_sentence_v1.ja",
+  "prompt_language": "ja",
   "support_mode": "zero",
   "f_shot": 0,
+  "blank_rendering": "（　　　）",
   "generation_config": {
     "temperature": 0,
     "top_p": null,
@@ -33,8 +35,10 @@ A result record should contain enough item metadata to remain analyzable even wh
     "context_window": null,
     "stop": []
   },
+  "generation_config_hash": null,
   "raw_output": "あなたが鏡の前で現実の右手を上げる。鏡の中の像で上がっている手は、現実のあなたの右手に対応する。",
   "normalized_output": "あなたが鏡の前で現実の右手を上げる。鏡の中の像で上がっている手は、現実のあなたの右手に対応する。",
+  "extraction_mode": "exact_full_text",
   "blank_results": [
     {
       "blank_id": "blank_1",
@@ -75,7 +79,11 @@ Recommended identity fields:
 - `item_id`
 - `trial_id`
 - `prompt_template_id`
+- `prompt_language`
 - `support_mode`
+- `f_shot`
+- `blank_rendering`
+- `extraction_mode`
 
 For repeated trials, do not overwrite earlier rows. Append a new JSONL row.
 
@@ -92,6 +100,53 @@ Reason:
 - language and probe-level filtering should be possible from result logs.
 
 The dataset remains the source of truth for item authoring. The result record stores a run-time copy of key metadata for analysis stability.
+
+## Prompt and parser metadata
+
+Prompt and parser settings are experimental conditions. They must be recorded rather than inferred.
+
+Required prompt metadata:
+
+- `prompt_template_id`
+- `prompt_language`
+- `support_mode`
+- `f_shot`
+- `blank_rendering`
+
+Required parser metadata:
+
+- `extraction_mode`
+
+Supported v0 extraction modes:
+
+- `exact_full_text`
+- `segment`
+
+Future fallback mode:
+
+- `fallback_answer_phrase`
+
+Fallback extraction must not be mixed with strict v0 extraction in the same aggregate unless grouped by `extraction_mode`.
+
+## Generation config identity
+
+Aggregates should not rely on raw object key order when grouping generation settings.
+
+Recommended canonicalization:
+
+- serialize `generation_config` as canonical JSON;
+- sort object keys;
+- preserve explicit nulls;
+- avoid insignificant whitespace;
+- compute `generation_config_hash` when a compact grouping key is needed.
+
+Example:
+
+```json
+{
+  "generation_config_hash": "sha256:..."
+}
+```
 
 ## Provenance and filtering
 
@@ -123,12 +178,13 @@ Use this order when turning a model output into a result record:
 2. Produce `normalized_output` by applying minimal normalization.
 3. Check exact match against `expected_full_texts`.
 4. Try segment-based extraction.
-5. Evaluate whether the model followed the explicit completed-sentence output instruction.
-6. If segment extraction succeeds, classify each extracted fill.
-7. If no fill can be extracted, set `parse_fail = true` for the affected blank.
-8. Compute similarity scores as diagnostic metrics only.
+5. Record `extraction_mode`.
+6. Evaluate whether the model followed the explicit completed-sentence output instruction.
+7. If extraction succeeds, classify each extracted fill.
+8. If no fill can be extracted, set `parse_fail = true` for the affected blank.
+9. Compute similarity scores as diagnostic metrics only.
 
-Early versions should prefer segment-based extraction only. Fallback extractors may be added later, but they must store their extraction mode explicitly.
+Early versions should prefer exact full-text and segment-based extraction only. Fallback extractors may be added later, but they must store their extraction mode explicitly.
 
 ## Instruction following, format failure, and parse failure
 
@@ -212,8 +268,13 @@ Recommended grouping keys:
 - `language`
 - `item_id`
 - `blank_id`
+- `prompt_template_id`
+- `prompt_language`
 - `support_mode`
-- `generation_config`
+- `f_shot`
+- `blank_rendering`
+- `extraction_mode`
+- `generation_config` or `generation_config_hash`
 
 Example:
 
@@ -262,6 +323,12 @@ Per category:
 - `language`
 - `primary_skill`
 - `context_distance`
+- `prompt_template_id`
+- `prompt_language`
+- `support_mode`
+- `f_shot`
+- `blank_rendering`
+- `extraction_mode`
 - `content_pass_rate`
 - `instruction_following_pass_rate`
 - `item_format_pass_rate`
