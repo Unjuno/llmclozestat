@@ -15,6 +15,7 @@ The goal is to collect structured evidence about model behavior:
 - whether it follows the requested completed-sentence format;
 - how behavior changes by language;
 - how behavior changes by probe type;
+- how behavior changes by prompt and parser condition;
 - how results change across runs and submitters.
 
 ## Main entities
@@ -35,18 +36,15 @@ Example:
 mirror_perspective_body_correspondence_0001
 ```
 
-This probe tests whether a model can distinguish real body-part correspondence from the surface rule that mirrors reverse left and right.
-
 ### Variant
 
-A `variant` is a concrete language-specific wording of a probe.
+A `variant` is a concrete language-specific or wording-specific realization of a probe.
 
 A probe may have many variants:
 
 ```text
 mirror_perspective_body_correspondence_0001.ja
 mirror_perspective_body_correspondence_0001.en
-mirror_perspective_body_correspondence_0001.fr
 ```
 
 Variants are not automatically equivalent. Each variant must declare:
@@ -62,6 +60,7 @@ An `item` is one cloze problem stored as one JSON object in `items.jsonl`.
 It contains:
 
 - `validation_target`
+- `claim_scope`
 - `text_with_blanks`
 - `segments`
 - `blanks`
@@ -71,9 +70,7 @@ It contains:
 
 A `blank` is one missing span inside an item.
 
-Each blank is scored independently.
-
-A multi-blank item can test dependency, long-context use, and position-specific failures.
+Each blank is scored independently. A multi-blank item can test dependency, long-context use, and position-specific failures.
 
 ### Fill
 
@@ -99,12 +96,24 @@ A run should have:
 - model information
 - backend information
 - generation parameters
+- prompt metadata
+- parser metadata
+
+Required prompt and parser metadata include:
+
+- `prompt_template_id`
+- `prompt_language`
+- `support_mode`
+- `f_shot`
+- `blank_rendering`
+- `extraction_mode`
+- `generation_config` or `generation_config_hash`
 
 ### Submission
 
 A `submission` is a shareable package prepared for Git commit or pull request.
 
-Recommended layout:
+Recommended publishable layout:
 
 ```text
 submissions/<submitter_id>/<run_id>/
@@ -112,9 +121,12 @@ submissions/<submitter_id>/<run_id>/
   run.jsonl
   summary.json
   summary.md
+  manifest.json
 ```
 
 Submissions are self-reported. They are not authenticated model certificates.
+
+`manifest.json` supports package-level tamper detection only. It does not prove that the claimed model generated the outputs.
 
 ## Data path
 
@@ -124,9 +136,11 @@ probe design
   -> item JSONL
   -> prompt
   -> model output
+  -> parser/scorer
   -> raw result JSONL
   -> aggregate summary
-  -> optional submission package
+  -> optional publishable submission package
+  -> manifest.json for package-level tamper detection
 ```
 
 ## Scoring model
@@ -155,6 +169,7 @@ Recommended fill classes:
 
 Each item records:
 
+- `instruction_following_pass`
 - `item_format_pass`
 - `item_partial_score`
 - `item_strict_pass`
@@ -184,9 +199,10 @@ A run aggregates item and blank results into:
 | `A_{i,b}` | accepted fill set | none | accepted fills for item `i`, blank `b` | non-empty finite set | set |
 | `Y_{m,r,i,b,t}` | blank content pass | none | 1 if extracted fill is accepted, else 0 | `{0,1}` | Bernoulli |
 | `F_{m,r,i,t}` | item format pass | none | 1 if whole output follows completed-sentence format | `{0,1}` | Bernoulli |
+| `G_{m,r,i,t}` | instruction following pass | none | 1 if explicit output contract was followed | `{0,1}` | Bernoulli |
 | `B_i` | blank set | count | blanks belonging to item `i` | non-empty finite set | set |
 | `S_{m,r,i,t}` | item partial score | ratio | accepted blank count divided by blank count | `[0,1]` | scalar |
-| `Q_{m,r,i,t}` | item strict pass | none | 1 if all blanks pass and item format passes | `{0,1}` | Bernoulli |
+| `Q_{m,r,i,t}` | item strict pass | none | 1 if all blanks pass and item instruction/format passes | `{0,1}` | Bernoulli |
 | `n_{m,i,b,z}` | fill count | count | number of times fill `z` appears for model/item/blank | non-negative integer | integer |
 | `N_{m,i,b}` | trial count | count | number of trials for model/item/blank | positive integer | integer |
 | `P_m(z | i,b)` | fill probability estimate | ratio | empirical probability of fill `z` | `[0,1]` | scalar |
@@ -208,8 +224,10 @@ S_{m,r,i,t} = (1 / |B_i|) * sum over b in B_i of Y_{m,r,i,b,t}
 ### Item strict pass
 
 ```text
-Q_{m,r,i,t} = F_{m,r,i,t} * product over b in B_i of Y_{m,r,i,b,t}
+Q_{m,r,i,t} = G_{m,r,i,t} * F_{m,r,i,t} * product over b in B_i of Y_{m,r,i,b,t}
 ```
+
+In v0, `G` and `F` are expected to be equal because the explicit instruction is to output the completed full sentence.
 
 ### Fill distribution
 
@@ -225,7 +243,7 @@ Repeated identical fills increase `n_{m,i,b,z}`. They are not removed.
 - `n_{m,i,b,z}` is a count.
 - `N_{m,i,b}` is a count.
 - `n / N` is a ratio.
-- `Y`, `F`, and `Q` are 0/1 values.
+- `Y`, `F`, `G`, and `Q` are 0/1 values.
 - `S` is a ratio from 0 to 1.
 
 The scoring values are dimensionless and suitable for aggregation.
@@ -264,13 +282,19 @@ If a model succeeds in one language variant but fails in another, do not immedia
 - grammar constraints;
 - tokenization or script effects.
 
+### Prompt or parser effect
+
+If behavior changes across `prompt_template_id`, `prompt_language`, `support_mode`, `blank_rendering`, or `extraction_mode`, do not report it as a pure model capability difference.
+
+Group or stratify by those fields before drawing model comparisons.
+
 ### Submitter/run filtering
 
 Because submissions are self-reported, aggregation must preserve `submitter_id` and `run_id` so later reports can exclude suspicious or broken runs without editing raw logs.
 
 ## Research use
 
-For a graduation research project, the defensible claim is not:
+A defensible claim is not:
 
 ```text
 This tool proves model X is better.
@@ -279,7 +303,7 @@ This tool proves model X is better.
 A better claim is:
 
 ```text
-This tool collects structured cloze-task logs and estimates model-specific fill distributions, repeated error patterns, format-following behavior, and language-variant effects under documented conditions.
+This tool collects structured cloze-task logs and estimates model-specific fill distributions, repeated error patterns, format-following behavior, language-variant effects, and prompt/parser-condition effects under documented conditions.
 ```
 
 That claim is measurable and falsifiable.
