@@ -1,6 +1,6 @@
 # Schemas
 
-This directory contains JSON Schemas for early `llmclozestat` records.
+This directory contains JSON Schemas for early `llmclozestat` records and repository metadata.
 
 The schemas are intended to prevent obvious data breakage while the project is still in the v0.0 design and smoke-test phase. They define required record shape, while deeper consistency checks remain the responsibility of validation code.
 
@@ -10,6 +10,7 @@ The schemas are intended to prevent obvious data breakage while the project is s
 schemas/item.schema.json
 schemas/result.schema.json
 schemas/environment.schema.json
+schemas/model.schema.json
 ```
 
 ## Purpose
@@ -39,6 +40,7 @@ Validates one JSON object from:
 
 ```text
 run.jsonl
+run-shards/*.jsonl
 ```
 
 It checks that each trial record contains:
@@ -84,6 +86,31 @@ Required prompt/parser environment fields include:
 - `blank_rendering`
 - `parser_config`
 
+### model.schema.json
+
+Validates the parsed object form of:
+
+```text
+model.toml
+```
+
+A model repository should use `model.toml` to describe exactly one model identity.
+
+It checks core model-repository metadata such as:
+
+- `model.model_id`
+- `model.family`
+- `model.source`
+- `model.source_repo`
+- `model.revision`
+- `model.quantization`
+- `model.backend`
+- `policy.one_model_repo`
+
+The schema also allows an optional `default_condition` object for prompt, generation, and parser defaults.
+
+`model.schema.json` does not prove that the claimed model generated any output. It only makes model-repository metadata machine-checkable.
+
 ## Design stance
 
 The schemas are intentionally permissive where future expansion is expected:
@@ -104,11 +131,13 @@ Examples of checks that should be handled by code rather than schema alone:
 - `support_mode = zero` implies `f_shot = 0`;
 - `content_pass = true` implies `fill_class = accepted` in v0;
 - `item_strict_pass` matches the documented strict-pass formula;
-- `generation_config_hash` matches canonical JSON for `generation_config` when present.
+- `generation_config_hash` matches canonical JSON for `generation_config` when present;
+- `environment.json.model_id` matches all result records;
+- `model.toml.model.model_id` matches all submissions in a model repository.
 
 ## Submission package schema boundary
 
-Submission package structure is validated by package-level validation, not by these three record schemas.
+Submission package structure is validated by package-level validation, not by these record schemas alone.
 
 Publishable submissions are expected to contain:
 
@@ -116,6 +145,19 @@ Publishable submissions are expected to contain:
 submissions/<submitter_id>/<run_id>/
   environment.json
   run.jsonl
+  summary.json
+  summary.md
+  manifest.json
+```
+
+or, for larger runs:
+
+```text
+submissions/<submitter_id>/<run_id>/
+  environment.json
+  run-shards/
+    run-000001.jsonl
+    run-000002.jsonl
   summary.json
   summary.md
   manifest.json
@@ -131,8 +173,9 @@ The CLI should eventually provide:
 llmclozestat validate items --dataset datasets/smoke_v0/items.jsonl
 llmclozestat validate results --input results/example/run.jsonl
 llmclozestat validate environment --input submissions/example/run/environment.json
+llmclozestat validate model --input model.toml
 llmclozestat validate submission --path submissions/<submitter_id>/<run_id>
 llmclozestat verify-integrity --path submissions/<submitter_id>/<run_id>
 ```
 
-Until implementation is added, these schemas document the intended shape of records.
+Until implementation is added, these schemas document the intended shape of records and metadata.
