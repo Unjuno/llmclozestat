@@ -15,6 +15,7 @@ Currently expected commands:
 - `aggregate`: design target.
 - `prepare-submission`: design target.
 - `validate`: design target.
+- `verify-integrity`: design target.
 - `report`: design target.
 
 ## Target workflow
@@ -26,6 +27,7 @@ git clone
   -> append raw JSONL under results/
   -> aggregate summaries
   -> prepare submissions/<submitter_id>/<run_id>/
+  -> write manifest.json for publishable submissions
   -> commit or open a pull request
 ```
 
@@ -42,6 +44,11 @@ llmclozestat run \
   --submitter-id github-username-or-local-name \
   --run-id smoke-local-model-20260525 \
   --out results/smoke-local-model-20260525/run.jsonl \
+  --prompt-template-id fill_full_sentence_v1.ja \
+  --prompt-language ja \
+  --support-mode zero \
+  --f-shot 0 \
+  --blank-rendering '（　　　）' \
   --temperature 0 \
   --top-p null \
   --seed null \
@@ -63,7 +70,12 @@ The run command should make these values explicit or derive them safely:
 - `backend_version`
 - `provider`
 - `prompt_template_id`
+- `prompt_language`
 - `support_mode`
+- `f_shot`
+- `blank_rendering`
+- `parser_config`
+- `extraction_mode`
 - `temperature`
 - `top_p`
 - `seed`
@@ -73,6 +85,32 @@ The run command should make these values explicit or derive them safely:
 - `stop`
 
 `submitter_id` and `run_id` are not authentication. They are provenance fields for filtering and re-aggregation.
+
+`prompt_template_id`, `prompt_language`, `support_mode`, `f_shot`, and `blank_rendering` are experimental conditions. They must be preserved so prompt changes are not mistaken for model behavior differences.
+
+`extraction_mode` is required in result records. v0 should use only `exact_full_text` or `segment`; fallback extraction modes must not be mixed into v0 aggregates without grouping by extraction mode.
+
+## Generation config identity
+
+Aggregators should compare generation conditions using canonicalized generation config.
+
+Recommended canonicalization:
+
+- serialize as canonical JSON;
+- sort object keys;
+- preserve explicit null values;
+- avoid insignificant whitespace;
+- hash the canonical JSON when a compact grouping key is needed.
+
+Recommended field:
+
+```json
+{
+  "generation_config_hash": "sha256:..."
+}
+```
+
+This avoids treating semantically identical JSON objects as different conditions only because their key order differs.
 
 ## Aggregate command shape
 
@@ -101,8 +139,13 @@ Aggregators should preserve grouping by:
 - `language`
 - `item_id`
 - `blank_id`
+- `prompt_template_id`
+- `prompt_language`
 - `support_mode`
-- `generation_config`
+- `f_shot`
+- `blank_rendering`
+- `extraction_mode`
+- `generation_config` or `generation_config_hash`
 - `submitter_id`
 - `run_id`
 
@@ -114,10 +157,11 @@ llmclozestat prepare-submission \
   --run-id smoke-local-model-20260525 \
   --run-jsonl results/smoke-local-model-20260525/run.jsonl \
   --summary-json results/smoke-local-model-20260525/summary.json \
-  --out-dir submissions/github-username-or-local-name/smoke-local-model-20260525
+  --out-dir submissions/github-username-or-local-name/smoke-local-model-20260525 \
+  --write-manifest
 ```
 
-The generated directory should contain:
+The generated publishable directory should contain:
 
 ```text
 submissions/<submitter_id>/<run_id>/
@@ -125,7 +169,19 @@ submissions/<submitter_id>/<run_id>/
   run.jsonl
   summary.json
   summary.md
+  manifest.json
 ```
+
+`manifest.json` is required for publishable submissions. It is optional only for local scratch results under `results/`, which must be treated as unverified.
+
+## Verify integrity command shape
+
+```bash
+llmclozestat verify-integrity \
+  --path submissions/<submitter_id>/<run_id>
+```
+
+This command verifies package hashes only. It does not prove that the claimed model generated the outputs.
 
 ## Repository-retained data
 
@@ -150,4 +206,6 @@ A user should be able to:
 4. aggregate locally;
 5. decide whether to commit or submit results.
 
-This keeps the tool simple and keeps authentication, attestation, and hosted infrastructure out of scope.
+This keeps the tool simple and keeps model authentication, execution attestation, and hosted infrastructure out of scope.
+
+Package-level manifest hashing is allowed because it only detects later package tampering. It must not be described as model authentication.
