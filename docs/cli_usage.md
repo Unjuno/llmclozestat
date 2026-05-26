@@ -17,6 +17,7 @@ Currently expected commands:
 - `validate`: design target.
 - `verify-integrity`: design target.
 - `report`: design target.
+- `collect`: design target for one-command run/package/validate/PR-oriented workflows.
 
 ## Target workflow
 
@@ -55,6 +56,40 @@ llmclozestat run \
   --max-tokens 64 \
   --context-window null
 ```
+
+## Collect command shape
+
+`collect` is a future convenience command. It should run exactly one model under one condition and produce one submission package.
+
+Recommended MVP constraint:
+
+```text
+one collect command = one model = one run = one submission
+```
+
+Possible shape:
+
+```bash
+llmclozestat collect \
+  --dataset datasets/smoke_v0/items.jsonl \
+  --provider openai-compatible \
+  --base-url http://localhost:1234/v1 \
+  --model local-model \
+  --submitter-id github-username-or-local-name \
+  --target-trials 20 \
+  --prompt-template-id fill_full_sentence_v1.ja \
+  --prompt-language ja \
+  --support-mode zero \
+  --f-shot 0 \
+  --blank-rendering '（　　　）' \
+  --prepare-submission \
+  --write-manifest \
+  --validate
+```
+
+`collect` may later support PR-oriented modes such as `--safe-pr`, but push and pull-request creation should be explicit. The MVP may stop at generating a validated local submission package.
+
+`collect` should not mix multiple model identities in one submission package.
 
 ## Required run metadata
 
@@ -172,6 +207,19 @@ submissions/<submitter_id>/<run_id>/
   manifest.json
 ```
 
+For larger runs, implementations should allow sharded JSONL output:
+
+```text
+submissions/<submitter_id>/<run_id>/
+  environment.json
+  run-shards/
+    run-000001.jsonl
+    run-000002.jsonl
+  summary.json
+  summary.md
+  manifest.json
+```
+
 `manifest.json` is required for publishable submissions. It is optional only for local scratch results under `results/`, which must be treated as unverified.
 
 ## Verify integrity command shape
@@ -193,6 +241,8 @@ The repository should retain:
 - examples and schemas when added.
 
 The repository should not retain local scratch outputs under `results/`.
+
+For large or repeated result collection, prefer separate model repositories. A model repository should contain results for one model identity and use the same submission package format.
 
 ## Local-first rule
 
