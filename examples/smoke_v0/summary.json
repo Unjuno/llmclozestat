@@ -1,0 +1,43 @@
+{
+  "summary_version": "0.1",
+  "submitter_id": "example-local",
+  "run_id": "smoke-v0-example-20260526",
+  "dataset_id": "smoke_v0",
+  "model_id": "example-model",
+  "n_trials": 1,
+  "content_pass_rate": 1.0,
+  "instruction_following_pass_rate": 1.0,
+  "item_format_pass_rate": 1.0,
+  "strict_pass_rate": 1.0,
+  "parse_fail_rate": 0.0,
+  "avg_latency_ms": 0,
+  "groups": [
+    {
+      "probe_id": "mirror_perspective_body_correspondence_0001",
+      "variant_id": "mirror_perspective_body_correspondence_0001.ja",
+      "language": "ja",
+      "item_id": "mirror_perspective_0001",
+      "blank_id": "blank_1",
+      "prompt_template_id": "fill_full_sentence_v1.ja",
+      "prompt_language": "ja",
+      "support_mode": "zero",
+      "f_shot": 0,
+      "blank_rendering": "（　　　）",
+      "extraction_mode": "exact_full_text",
+      "generation_config_hash": "sha256:972c22112d39dce4e82ce1b0b1192f18b787ac42f56847c82e5c2f1866c82ac3",
+      "n_trials": 1,
+      "fill_distribution": {
+        "右": {
+          "count": 1,
+          "rate": 1.0,
+          "fill_class": "accepted"
+        }
+      },
+      "unique_fill_count": 1,
+      "top_fill": "右",
+      "top_wrong_fill": null,
+      "mean_entropy": 0.0
+    }
+  ],
+  "notes": "Reference example only. Not a real benchmark result."
+}
