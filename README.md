@@ -21,16 +21,17 @@ Currently implemented CLI commands:
 - `version`
 - `validate items` minimal item JSONL validation
 - `validate results` minimal result JSONL consistency validation
+- `aggregate` minimal result JSONL to summary JSON aggregation
 
 Currently implemented library core:
 
 - strict-v0 parser/scorer pure function core
 - result-record assembly helper
+- summary aggregation helper
 
 Still design targets:
 
 - `run`
-- `aggregate`
 - `prepare-submission`
 - `validate summary`
 - `validate manifest`
@@ -89,10 +90,12 @@ The repository currently contains:
 - one-item `smoke_v0` dataset;
 - parser/scorer and result-format specifications;
 - fill-class policy;
-- fixture policy and parser/result validation fixtures;
+- fixture policy and parser/result/summary aggregation fixtures;
 - minimal `validate items` and `validate results` commands;
+- minimal `aggregate` command;
 - strict-v0 parser/scorer core;
 - result-record assembly helper;
+- summary aggregation helper;
 - package-level integrity design.
 
 The first dataset, `smoke_v0`, is intentionally small. It is for validating the pipeline and collecting local probe statistics, not for broad model evaluation.
