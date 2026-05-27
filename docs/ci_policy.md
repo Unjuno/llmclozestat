@@ -55,6 +55,7 @@ CI should focus on:
 - one-model repository invariant;
 - pinned dataset validity;
 - submission package validity;
+- submitter/run identity consistency;
 - manifest verification;
 - report regeneration after merge.
 
@@ -135,6 +136,10 @@ Required checks:
 - `manifest.json` validates;
 - manifest file hashes match;
 - path submitter/run IDs match metadata;
+- `submitter_id` follows the slug policy;
+- for ordinary public PRs, `submitter_id` matches the lowercase PR author login;
+- `run_id` follows the recommended unique run-id pattern;
+- the target submission path does not already exist on the base branch;
 - one-model submission policy holds.
 
 ### Report PR
@@ -184,6 +189,27 @@ If a contributor needs to add a dataset item and submit results for it, use two 
 2. result PR after dataset PR is merged
 ```
 
+## Submitter and run identity CI
+
+For normal result PRs, CI should enforce the policy in `docs/submitter_identity.md`.
+
+Recommended checks:
+
+```text
+1. The changed path contains exactly one submission package.
+2. Path submitter_id matches environment.json.submitter_id.
+3. Path run_id matches environment.json.run_id.
+4. All result records use the same submitter_id and run_id.
+5. summary.json uses the same submitter_id and run_id.
+6. manifest.json uses the same submitter_id and run_id.
+7. submitter_id is a safe lowercase slug.
+8. For ordinary public PRs, submitter_id == lowercase(PR author login).
+9. run_id has dataset_id + UTC timestamp + random suffix shape.
+10. The submission path is new relative to the base branch.
+```
+
+CI must not treat this as execution authentication. It is conflict avoidance and provenance consistency only.
+
 ## Pull request CI
 
 For pull requests, CI should validate only and not commit generated files back to the PR by default.
@@ -199,6 +225,7 @@ checkout
   -> validate changed datasets
   -> validate changed submissions
   -> verify changed manifests
+  -> enforce submitter/run identity consistency for result PRs
   -> fail with clear diagnostics
 ```
 
@@ -300,6 +327,7 @@ CI can check:
 - deterministic cross-field consistency;
 - manifest hashes;
 - summary regeneration;
+- submitter/run identity consistency;
 - one-model invariants.
 
 CI cannot prove:
@@ -320,8 +348,9 @@ Minimum useful CI:
 3. schema validation
 4. item cross-field validation
 5. submission required-file check
-6. manifest hash verification
-7. one-model submission check when model.toml exists
+6. submitter/run identity consistency check
+7. manifest hash verification
+8. one-model submission check when model.toml exists
 ```
 
 ## Later CI checks
