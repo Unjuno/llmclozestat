@@ -51,14 +51,23 @@ tests/fixtures/
       duplicate_item_id.jsonl
       duplicate_variant_id.jsonl
 
+  parser/
+    README.md
+    accepted_exact_full_text.json
+    accepted_segment.json
+    classify_near_miss.json
+    classify_known_wrong.json
+    classify_wrong.json
+    instruction_wrapper_parse_fail.json
+    segment_parse_fail.json
+
   results/
     valid/
-      smoke_v0_one_trial.jsonl
+      minimal_result.jsonl
     invalid/
-      content_pass_near_miss.jsonl
+      content_pass_fill_class_inconsistent.jsonl
       parse_fail_with_blank_parse_pass.jsonl
       strict_pass_inconsistent.jsonl
-      format_fail_v0.jsonl
 
   summaries/
     valid/
@@ -141,6 +150,36 @@ Recommended initial invalid fixtures:
 | `duplicate_item_id.jsonl` | duplicate `item_id` inside one dataset file | `duplicate_item_id` |
 | `duplicate_variant_id.jsonl` | duplicate `variant_id` inside one dataset file | `duplicate_variant_id` |
 
+## Parser/scorer fixtures
+
+Parser/scorer fixtures are stored under:
+
+```text
+tests/fixtures/parser/
+```
+
+They verify deterministic transformation from:
+
+```text
+item JSON object + raw_output
+```
+
+to strict-v0 parser/scorer output.
+
+Initial parser fixtures:
+
+| Fixture | Expected behavior |
+|---|---|
+| `accepted_exact_full_text.json` | exact full-text match gives accepted strict pass |
+| `accepted_segment.json` | segment extraction gives accepted strict pass |
+| `classify_near_miss.json` | `near_miss` is not content-pass |
+| `classify_known_wrong.json` | `known_wrong` is separate from generic `wrong` and not content-pass |
+| `classify_wrong.json` | unlisted fill becomes generic `wrong` |
+| `instruction_wrapper_parse_fail.json` | output wrapper fails strict-v0 format and parsing |
+| `segment_parse_fail.json` | missing required segment causes parse failure |
+
+See `docs/parser_fixture_policy.md`.
+
 ## Result fixtures
 
 Valid result fixtures should preserve:
@@ -155,14 +194,15 @@ Valid result fixtures should preserve:
 
 Invalid result fixtures should target scoring consistency rules.
 
-Recommended initial invalid result fixtures:
+Current initial result fixtures:
 
 | Fixture | Expected failure | Code |
 |---|---|---|
-| `content_pass_near_miss.jsonl` | `fill_class = near_miss` with `content_pass = true` | `content_pass_near_miss` |
+| `content_pass_fill_class_inconsistent.jsonl` | `content_pass = true` while `fill_class != accepted` | `content_pass_fill_class_inconsistent` |
 | `parse_fail_with_blank_parse_pass.jsonl` | `parse_fail = true` with `blank_parse_pass = true` | `parse_fail_with_blank_parse_pass` |
-| `strict_pass_inconsistent.jsonl` | `item_strict_pass = true` despite failed blank or format | `strict_pass_inconsistent` |
-| `format_fail_v0.jsonl` | blank-level `fill_class = format_fail` in v0 | `format_fail_v0` |
+| `strict_pass_inconsistent.jsonl` | `item_strict_pass` does not match the strict-pass formula | `strict_pass_inconsistent` |
+
+Warnings-only result fixtures such as `format_fail_v0.jsonl` should be added separately when warning tests are implemented.
 
 ## Summary fixtures
 
