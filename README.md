@@ -61,7 +61,7 @@ one result PR = one submission package
 
 See `docs/operating_model.md` for model-repository, fixed-condition, PR, CI, report, and storage policies.
 
-Model-specific data repositories should use `model.toml`; see `docs/model_repository.md` and `schemas/model.schema.json`.
+Model-specific data repositories should use `model.toml`; see `docs/model_repository.md`, `docs/model_repository_usage.md`, and `schemas/model.schema.json`.
 
 ## Current status
 
@@ -80,7 +80,7 @@ Current repository contents focus on:
 - model repository metadata schema
 - scoring/conceptual model
 - research rationale and plan
-- schemas for item/result/environment/model records
+- schemas for item/result/environment/summary/manifest/model records
 - one-item smoke dataset
 - schema-compliant reference examples
 - minimal Python package skeleton
@@ -185,6 +185,7 @@ For large or repeated result collection, prefer a separate model repository and 
 - `docs/design.md` — project design and scope
 - `docs/operating_model.md` — model-repository, fixed-condition, PR, CI, report, and storage policies
 - `docs/model_repository.md` — model.toml metadata and one-model repository rules
+- `docs/model_repository_usage.md` — practical model repository setup and changing-model guide
 - `docs/problem_data_policy.md` — rules for authoring probe items
 - `docs/prompting.md` — prompt templates, support modes, and output contract
 - `docs/parser_scoring.md` — deterministic extraction and scoring rules
