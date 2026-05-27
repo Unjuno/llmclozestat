@@ -228,7 +228,9 @@ Each blank is scored independently.
 - `blank_parse_pass`: a fill was extracted for this blank by the active extraction method.
 - `content_pass`: the extracted fill is in `accepted_fills`.
 - `parse_fail`: the fill could not be extracted.
-- `fill_class`: one of `accepted`, `near_miss`, `wrong`, `format_fail`, `parse_fail`.
+- `fill_class`: one of `accepted`, `near_miss`, `known_wrong`, `wrong`, `format_fail`, `parse_fail`.
+
+See `docs/fill_class_policy.md` for the exact fill-class vocabulary and classification order.
 
 Do not use `format_pass` at the blank level. Use `blank_parse_pass` to avoid confusion with item-level format compliance.
 
@@ -298,7 +300,7 @@ Example:
   "n_trials": 10,
   "fill_distribution": [
     {"extracted_fill": "右", "fill_key": "右", "count": 7, "rate": 0.7, "fill_class": "accepted"},
-    {"extracted_fill": "左", "fill_key": "左", "count": 2, "rate": 0.2, "fill_class": "wrong"},
+    {"extracted_fill": "左", "fill_key": "左", "count": 2, "rate": 0.2, "fill_class": "known_wrong"},
     {"extracted_fill": null, "fill_key": "__PARSE_FAIL__", "count": 1, "rate": 0.1, "fill_class": "parse_fail"}
   ],
   "unique_fill_count": 3,
@@ -349,4 +351,4 @@ For repository-wide reports, aggregators should preserve counts by `submitter_id
 
 ## Repeated fills
 
-Repeated identical fills must be counted. They are not duplicates to remove. If the same wrong fill repeatedly appears at the same blank, it is evidence of a systematic tendency.
+Repeated identical fills must be counted. They are not duplicates to remove. If the same wrong or known-wrong fill repeatedly appears at the same blank, it is evidence of a systematic tendency.
