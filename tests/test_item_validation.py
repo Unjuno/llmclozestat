@@ -57,6 +57,47 @@ class ItemValidationTests(unittest.TestCase):
                     self.assertIsInstance(entry["code"], str)
                     self.assertTrue(entry["code"])
 
+    def test_validation_output_contract_shape_for_success(self) -> None:
+        result = validate_items_file(ROOT / "datasets" / "smoke_v0" / "items.jsonl")
+        self.assert_validation_output_contract(result.to_dict(), expected_status="passed")
+
+    def test_validation_output_contract_shape_for_failure(self) -> None:
+        result = validate_items_file(
+            ITEM_FIXTURES / "invalid" / "segments_blanks_mismatch.jsonl"
+        )
+        self.assert_validation_output_contract(result.to_dict(), expected_status="failed")
+
+    def assert_validation_output_contract(self, output: dict, expected_status: str) -> None:
+        self.assertEqual(set(output.keys()), {"status", "errors", "warnings", "info"})
+        self.assertEqual(output["status"], expected_status)
+        self.assertIn(output["status"], {"passed", "failed"})
+        self.assertIsInstance(output["errors"], list)
+        self.assertIsInstance(output["warnings"], list)
+        self.assertIsInstance(output["info"], list)
+
+        for message in output["errors"]:
+            self.assert_message_shape(message)
+        for message in output["warnings"]:
+            self.assert_message_shape(message)
+        for info in output["info"]:
+            self.assertIn("code", info)
+            self.assertIn("message", info)
+            self.assertIsInstance(info["code"], str)
+            self.assertIsInstance(info["message"], str)
+            self.assertTrue(info["code"])
+            self.assertTrue(info["message"])
+
+    def assert_message_shape(self, message: dict) -> None:
+        self.assertIn("code", message)
+        self.assertIn("message", message)
+        self.assertIn("path", message)
+        self.assertIsInstance(message["code"], str)
+        self.assertIsInstance(message["message"], str)
+        self.assertIsInstance(message["path"], str)
+        self.assertTrue(message["code"])
+        self.assertTrue(message["message"])
+        self.assertTrue(message["path"])
+
     def load_expected_metadata(self, fixture_path: Path) -> dict:
         expected_path = fixture_path.with_suffix(".expected.json")
         with expected_path.open("r", encoding="utf-8") as handle:
