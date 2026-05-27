@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/llmclozestat/schemas/summary.schema.json",
+  "title": "llmclozestat run summary",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "summary_version",
+    "submitter_id",
+    "run_id",
+    "dataset_id",
+    "model_id",
+    "n_trials",
+    "content_pass_rate",
+    "instruction_following_pass_rate",
+    "item_format_pass_rate",
+    "strict_pass_rate",
+    "parse_fail_rate",
+    "groups"
+  ],
+  "properties": {
+    "summary_version": {"type": "string", "minLength": 1},
+    "submitter_id": {"type": "string", "minLength": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "dataset_id": {"type": "string", "minLength": 1},
+    "model_id": {"type": "string", "minLength": 1},
+    "n_trials": {"type": "integer", "minimum": 0},
+    "content_pass_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "instruction_following_pass_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "item_format_pass_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "strict_pass_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "parse_fail_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "avg_latency_ms": {"type": ["number", "null"], "minimum": 0},
+    "groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "probe_id",
+          "variant_id",
+          "language",
+          "item_id",
+          "blank_id",
+          "prompt_template_id",
+          "prompt_language",
+          "support_mode",
+          "f_shot",
+          "blank_rendering",
+          "extraction_mode",
+          "n_trials",
+          "fill_distribution",
+          "unique_fill_count"
+        ],
+        "properties": {
+          "probe_id": {"type": "string", "minLength": 1},
+          "variant_id": {"type": "string", "minLength": 1},
+          "language": {"type": "string", "minLength": 1},
+          "item_id": {"type": "string", "minLength": 1},
+          "blank_id": {"type": "string", "minLength": 1},
+          "position": {"type": ["integer", "null"], "minimum": 1},
+          "prompt_template_id": {"type": "string", "minLength": 1},
+          "prompt_language": {"type": "string", "minLength": 1},
+          "support_mode": {"type": "string", "minLength": 1},
+          "f_shot": {"type": "integer", "minimum": 0},
+          "blank_rendering": {"type": "string", "minLength": 1},
+          "extraction_mode": {"type": "string", "minLength": 1},
+          "generation_config_hash": {
+            "type": ["string", "null"],
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "n_trials": {"type": "integer", "minimum": 0},
+          "fill_distribution": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": ["count", "rate", "fill_class"],
+              "properties": {
+                "count": {"type": "integer", "minimum": 0},
+                "rate": {"type": "number", "minimum": 0, "maximum": 1},
+                "fill_class": {"type": "string", "minLength": 1}
+              }
+            }
+          },
+          "unique_fill_count": {"type": "integer", "minimum": 0},
+          "top_fill": {"type": ["string", "null"]},
+          "top_wrong_fill": {"type": ["string", "null"]},
+          "mean_entropy": {"type": ["number", "null"], "minimum": 0}
+        }
+      }
+    },
+    "notes": {"type": ["string", "null"]}
+  }
+}
