@@ -5,6 +5,7 @@ from pathlib import Path
 
 import typer
 
+from llmclozestat.aggregation import write_summary_file
 from llmclozestat.item_validation import validate_items_file
 from llmclozestat.result_validation import validate_results_file
 
@@ -15,10 +16,18 @@ app.add_typer(validate_app, name="validate")
 
 @app.command()
 def version() -> None:
-    """Print package version."""
     from llmclozestat import __version__
 
     typer.echo(__version__)
+
+
+@app.command("aggregate")
+def aggregate(
+    input_path: Path = typer.Option(..., "--input", exists=False, file_okay=True, dir_okay=False),
+    out: Path = typer.Option(..., "--out", file_okay=True, dir_okay=False),
+) -> None:
+    summary = write_summary_file(input_path, out)
+    typer.echo(json.dumps({"status": "passed", "summary_path": str(out), "n_trials": summary["n_trials"]}, ensure_ascii=False))
 
 
 @validate_app.command("items")
@@ -33,7 +42,6 @@ def validate_items(
         help="Path to a JSONL item dataset, such as datasets/smoke_v0/items.jsonl.",
     ),
 ) -> None:
-    """Validate item JSONL structure and item-level cross-field rules."""
     result = validate_items_file(dataset)
     typer.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
     if result.failed:
@@ -52,7 +60,6 @@ def validate_results(
         help="Path to a result JSONL file, such as submissions/example/run/run.jsonl.",
     ),
 ) -> None:
-    """Validate result JSONL structure and scoring consistency rules."""
     result = validate_results_file(input_path)
     typer.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
     if result.failed:
