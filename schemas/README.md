@@ -1,6 +1,6 @@
 # Schemas
 
-This directory contains JSON Schemas for early `llmclozestat` records, derived summaries, manifests, and repository metadata.
+This directory contains JSON Schemas for early `llmclozestat` records, derived summaries, manifests, validation output, and repository metadata.
 
 The schemas are intended to prevent obvious data breakage while the project is still in the v0.0 design and smoke-test phase. They define required record shape, while deeper consistency checks remain the responsibility of validation code.
 
@@ -13,6 +13,7 @@ schemas/environment.schema.json
 schemas/summary.schema.json
 schemas/manifest.schema.json
 schemas/model.schema.json
+schemas/validation_output.schema.json
 ```
 
 ## Purpose
@@ -153,6 +154,33 @@ The schema also allows an optional `default_condition` object for prompt, genera
 
 `model.schema.json` does not prove that the claimed model generated any output. It only makes model-repository metadata machine-checkable.
 
+### validation_output.schema.json
+
+Validates the machine-readable output of validation commands such as:
+
+```bash
+llmclozestat validate items --dataset datasets/smoke_v0/items.jsonl
+```
+
+It fixes the common output shape:
+
+```text
+status
+errors
+warnings
+info
+```
+
+Each error or warning message should include:
+
+```text
+code
+message
+path
+```
+
+The schema is a CLI output contract. It does not validate the input dataset, result, summary, manifest, or model repository itself.
+
 ## Design stance
 
 The schemas are intentionally permissive where future expansion is expected:
@@ -224,4 +252,10 @@ llmclozestat validate submission --path submissions/<submitter_id>/<run_id>
 llmclozestat verify-integrity --path submissions/<submitter_id>/<run_id>
 ```
 
-Until implementation is added, these schemas document the intended shape of records and metadata.
+Currently implemented:
+
+```bash
+llmclozestat validate items --dataset datasets/smoke_v0/items.jsonl
+```
+
+Until implementation is added, these schemas document the intended shape of records, validation output, and metadata.
