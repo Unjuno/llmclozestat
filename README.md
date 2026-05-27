@@ -16,12 +16,17 @@ This is not an official leaderboard. The goal is to observe model behavior stati
 
 This repository is still in the v0.0 design and smoke-test phase.
 
-Only the minimal Python package skeleton exists. The `version` command exists, but the following commands are design targets and are not implemented yet:
+Currently implemented:
+
+- `version`
+- `validate items` minimal item JSONL validation
+
+The following commands are still design targets and are not implemented yet:
 
 - `run`
 - `aggregate`
 - `prepare-submission`
-- `validate`
+- other `validate` subcommands
 - `verify-integrity`
 - `report`
 - `collect`
@@ -93,6 +98,7 @@ Current repository contents focus on:
 - schema-compliant reference examples
 - copyable model repository skeleton
 - minimal Python package skeleton
+- minimal `validate items` implementation
 
 The first dataset, `smoke_v0`, is intentionally small. It is for validating the pipeline and collecting local probe statistics, not for broad model evaluation.
 
