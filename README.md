@@ -64,6 +64,8 @@ See `docs/operating_model.md` for model-repository, fixed-condition, PR, CI, rep
 
 Model-specific data repositories should use `model.toml`; see `docs/model_repository.md`, `docs/model_repository_usage.md`, and `schemas/model.schema.json`.
 
+Submitter and run identifiers should follow `docs/submitter_identity.md` so repeated runs from the same user and different machines do not collide.
+
 ## Current status
 
 The project is in the v0.0 design/smoke-test phase.
@@ -79,6 +81,7 @@ Current repository contents focus on:
 - fixture policy
 - CI policy
 - implementation plan
+- submitter/run identity policy
 - package-level integrity and tamper detection
 - model-repository operating model
 - model repository metadata schema
@@ -211,6 +214,7 @@ For large or repeated result collection, prefer a separate model repository and 
 - `docs/model_repository_usage.md` — practical model repository setup and changing-model guide
 - `docs/ci_policy.md` — CI validation, PR classification, report generation, and size policy
 - `docs/implementation_plan.md` — recommended implementation phases and exit criteria
+- `docs/submitter_identity.md` — submitter_id/run_id naming, collision avoidance, and PR identity policy
 - `docs/fixtures.md` — fixture layout, valid/invalid fixture policy, and expected-failure metadata
 - `docs/problem_data_policy.md` — rules for authoring probe items
 - `docs/prompting.md` — prompt templates, support modes, and output contract
