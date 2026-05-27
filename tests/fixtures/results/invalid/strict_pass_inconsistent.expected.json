@@ -1,0 +1,8 @@
+{
+  "expected_status": "failed",
+  "expected_errors": [
+    {
+      "code": "strict_pass_inconsistent"
+    }
+  ]
+}
