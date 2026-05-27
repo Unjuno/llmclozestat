@@ -42,7 +42,8 @@ Examples:
 - manifest hash mismatch;
 - summary cannot be regenerated from raw results;
 - current-schema item missing `claim_scope`;
-- one-model submission contains more than one `model_id`.
+- one-model submission contains more than one `model_id`;
+- submission path `submitter_id` or `run_id` does not match package metadata.
 
 ### WARNING
 
@@ -376,15 +377,28 @@ The validator should check:
 - if `model.toml` exists in a model repository, `model.toml.model.model_id` matches the submission model ID;
 - a submission package does not mix unrelated quantization or backend identities unless a future policy explicitly allows it.
 
+### Submitter and run identity policy
+
+The validator should check the policy defined in `docs/submitter_identity.md`.
+
+Required checks:
+
+- path `<submitter_id>` matches `environment.json.submitter_id`;
+- path `<run_id>` matches `environment.json.run_id`;
+- all result records use the same `submitter_id` and `run_id`;
+- `summary.json.submitter_id` and `summary.json.run_id` match `environment.json`;
+- `manifest.json.submitter_id` and `manifest.json.run_id` match `environment.json`;
+- `submitter_id` is a safe lowercase slug;
+- `run_id` has the recommended dataset/timestamp/random structure, or is explicitly accepted by a future compatibility policy;
+- for ordinary public PRs, `submitter_id` should match the lowercase PR author login;
+- the submission path should be new relative to the base branch.
+
 ### Package checks
 
 The validator should check:
 
 - required files exist;
 - either `run.jsonl` or at least one `run-shards/*.jsonl` file exists;
-- path `<submitter_id>` matches `environment.json.submitter_id`;
-- path `<run_id>` matches `environment.json.run_id`;
-- all result records use the same `submitter_id` and `run_id`;
 - all result records use comparable prompt, parser, and generation metadata unless intentionally grouped by a future policy;
 - `summary.json` can be regenerated from result JSONL, or at least declares how it was generated;
 - `summary.md` is present and human-readable;
