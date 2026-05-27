@@ -1,0 +1,59 @@
+{
+  "summary_version": "summary_v0",
+  "submitter_id": "local-user",
+  "run_id": "summary-fixture-run",
+  "dataset_id": "fixture_dataset",
+  "model_id": "fixture-model",
+  "n_trials": 4,
+  "content_pass_rate": 0.5,
+  "instruction_following_pass_rate": 0.75,
+  "item_format_pass_rate": 0.75,
+  "strict_pass_rate": 0.5,
+  "parse_fail_rate": 0.25,
+  "avg_latency_ms": 25.0,
+  "groups": [
+    {
+      "probe_id": "fixture_probe",
+      "variant_id": "fixture_probe.en",
+      "language": "en",
+      "item_id": "fixture_item_1",
+      "blank_id": "blank_1",
+      "position": 1,
+      "prompt_template_id": "fill_full_sentence_v1.en",
+      "prompt_language": "en",
+      "support_mode": "zero",
+      "f_shot": 0,
+      "blank_rendering": "(___)",
+      "extraction_mode": "segment",
+      "generation_config_hash": null,
+      "n_trials": 4,
+      "fill_distribution": [
+        {
+          "extracted_fill": "alpha",
+          "fill_key": "alpha",
+          "count": 2,
+          "rate": 0.5,
+          "fill_class": "accepted"
+        },
+        {
+          "extracted_fill": "gamma",
+          "fill_key": "gamma",
+          "count": 1,
+          "rate": 0.25,
+          "fill_class": "known_wrong"
+        },
+        {
+          "extracted_fill": null,
+          "fill_key": "__PARSE_FAIL__",
+          "count": 1,
+          "rate": 0.25,
+          "fill_class": "parse_fail"
+        }
+      ],
+      "unique_fill_count": 3,
+      "top_fill": "alpha",
+      "top_wrong_fill": "gamma",
+      "mean_entropy": 1.5
+    }
+  ]
+}
