@@ -78,6 +78,7 @@ Current repository contents focus on:
 - result format
 - problem data policy
 - validation design
+- error code policy
 - fixture policy
 - CI policy
 - implementation plan
@@ -215,6 +216,7 @@ For large or repeated result collection, prefer a separate model repository and 
 - `docs/ci_policy.md` — CI validation, PR classification, report generation, and size policy
 - `docs/implementation_plan.md` — recommended implementation phases and exit criteria
 - `docs/submitter_identity.md` — submitter_id/run_id naming, collision avoidance, and PR identity policy
+- `docs/error_codes.md` — stable validation error and warning code registry
 - `docs/fixtures.md` — fixture layout, valid/invalid fixture policy, and expected-failure metadata
 - `docs/problem_data_policy.md` — rules for authoring probe items
 - `docs/prompting.md` — prompt templates, support modes, and output contract
