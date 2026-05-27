@@ -43,8 +43,8 @@ llmclozestat run \
   --base-url http://localhost:1234/v1 \
   --model local-model \
   --submitter-id github-username-or-local-name \
-  --run-id smoke-local-model-20260525 \
-  --out results/smoke-local-model-20260525/run.jsonl \
+  --run-id smoke_v0-20260527T143012Z-a7f3c9 \
+  --out results/smoke_v0-20260527T143012Z-a7f3c9/run.jsonl \
   --prompt-template-id fill_full_sentence_v1.ja \
   --prompt-language ja \
   --support-mode zero \
@@ -91,6 +91,32 @@ llmclozestat collect \
 
 `collect` should not mix multiple model identities in one submission package.
 
+## Submitter and run identity defaults
+
+`submitter_id` and `run_id` are not authentication. They are provenance fields for filtering, conflict avoidance, and re-aggregation.
+
+Recommended defaults:
+
+```text
+submitter_id = explicit CLI argument, or lowercase GitHub username when safely detected
+run_id = <dataset_id>-<UTC timestamp>-<random suffix>
+```
+
+Example:
+
+```text
+submitter_id = unjuno
+run_id = smoke_v0-20260527T143012Z-a7f3c9
+```
+
+The CLI should not silently reuse an existing `run_id`.
+
+If the target output directory already exists, the command should fail unless an explicit later resume or overwrite option is provided.
+
+Multiple machines owned by the same user should use the same `submitter_id` and different automatically generated `run_id` values.
+
+See `docs/submitter_identity.md` for the full policy.
+
 ## Required run metadata
 
 The run command should make these values explicit or derive them safely:
@@ -118,8 +144,6 @@ The run command should make these values explicit or derive them safely:
 - `context_window`
 - `repeat_penalty`
 - `stop`
-
-`submitter_id` and `run_id` are not authentication. They are provenance fields for filtering and re-aggregation.
 
 `prompt_template_id`, `prompt_language`, `support_mode`, `f_shot`, and `blank_rendering` are experimental conditions. They must be preserved so prompt changes are not mistaken for model behavior differences.
 
@@ -151,8 +175,8 @@ This avoids treating semantically identical JSON objects as different conditions
 
 ```bash
 llmclozestat aggregate \
-  --input results/smoke-local-model-20260525/run.jsonl \
-  --out results/smoke-local-model-20260525/summary.json
+  --input results/smoke_v0-20260527T143012Z-a7f3c9/run.jsonl \
+  --out results/smoke_v0-20260527T143012Z-a7f3c9/summary.json
 ```
 
 Aggregators should later support exclusion filters:
@@ -189,10 +213,10 @@ Aggregators should preserve grouping by:
 ```bash
 llmclozestat prepare-submission \
   --submitter-id github-username-or-local-name \
-  --run-id smoke-local-model-20260525 \
-  --run-jsonl results/smoke-local-model-20260525/run.jsonl \
-  --summary-json results/smoke-local-model-20260525/summary.json \
-  --out-dir submissions/github-username-or-local-name/smoke-local-model-20260525 \
+  --run-id smoke_v0-20260527T143012Z-a7f3c9 \
+  --run-jsonl results/smoke_v0-20260527T143012Z-a7f3c9/run.jsonl \
+  --summary-json results/smoke_v0-20260527T143012Z-a7f3c9/summary.json \
+  --out-dir submissions/github-username-or-local-name/smoke_v0-20260527T143012Z-a7f3c9 \
   --write-manifest
 ```
 
