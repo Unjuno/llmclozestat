@@ -1,0 +1,35 @@
+{
+  "name": "instruction_wrapper_parse_fail",
+  "item": {
+    "segments": ["A", "B"],
+    "blanks": [
+      {
+        "blank_id": "blank_1",
+        "position": 1,
+        "accepted_fills": ["alpha"],
+        "near_miss_fills": ["beta"],
+        "known_wrong_fills": ["gamma"]
+      }
+    ],
+    "expected_full_texts": ["AalphaB"]
+  },
+  "raw_output": "Answer: alpha",
+  "expected": {
+    "normalized_output": "Answer: alpha",
+    "extraction_mode": "segment",
+    "blank_results": [
+      {
+        "blank_id": "blank_1",
+        "extracted_fill": null,
+        "fill_class": "parse_fail",
+        "blank_parse_pass": false,
+        "content_pass": false,
+        "parse_fail": true
+      }
+    ],
+    "instruction_following_pass": false,
+    "item_format_pass": false,
+    "item_partial_score": 0.0,
+    "item_strict_pass": false
+  }
+}
