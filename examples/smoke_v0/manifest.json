@@ -15,14 +15,14 @@
     },
     {
       "path": "summary.json",
-      "sha256": "acaad7f02cb75f25fceca39ca2388ebec04f158fcb76b905885091c19e55dd7a"
+      "sha256": "e8a3763afc5940a4af647a52fbfab4259499903c52397c061eaf08e831546aa2"
     },
     {
       "path": "summary.md",
       "sha256": "4ecb3576c089d59648fd87ed4e6bfeefdd6770c480f1fcd8e7c5d01946a284c4"
     }
   ],
-  "package_hash": "sha256:d687e195b064efd4fd8ba94e7bd76045ce25ac5c8ff11ff510681186105f02a1",
-  "package_hash_input": "canonical_json(sorted files[path,sha256])",
+  "package_hash": "sha256:d4592c340ee1e2ae954620a165f492cc5735cc46dca95bf6991a07ec98cd4853",
+  "package_hash_input": "canonical_json(v0: keys sorted; files sorted by path; file fields path,sha256; exclude manifest/signature/ledger; utf-8; compact)",
   "notes": "Reference example only. Manifest verifies package files, not model execution authenticity."
 }
