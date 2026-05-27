@@ -83,6 +83,7 @@ Current repository contents focus on:
 - schemas for item/result/environment/summary/manifest/model records
 - one-item smoke dataset
 - schema-compliant reference examples
+- copyable model repository skeleton
 - minimal Python package skeleton
 
 The first dataset, `smoke_v0`, is intentionally small. It is for validating the pipeline and collecting local probe statistics, not for broad model evaluation.
@@ -157,6 +158,21 @@ See:
 This example is schema-compliant and intended as a fixture for implementing validation, parser/scorer output, aggregation, and manifest verification.
 
 It is not a real benchmark result.
+
+## Model repository example skeleton
+
+See:
+
+- `examples/model_repository/README.md`
+- `examples/model_repository/model.toml`
+- `examples/model_repository/DATA_LICENSE.md`
+- `examples/model_repository/datasets/pinned/.gitkeep`
+- `examples/model_repository/submissions/.gitkeep`
+- `examples/model_repository/reports/.gitkeep`
+
+This skeleton can be copied into a separate model-specific data repository.
+
+It is not a real measured model repository.
 
 ## Result accumulation
 
