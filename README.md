@@ -16,17 +16,27 @@ This is not an official leaderboard. The goal is to observe model behavior stati
 
 This repository is still in the v0.0 design and smoke-test phase.
 
-Currently implemented:
+Currently implemented CLI commands:
 
 - `version`
 - `validate items` minimal item JSONL validation
+- `validate results` minimal result JSONL consistency validation
 
-The following commands are still design targets and are not implemented yet:
+Currently implemented library core:
+
+- strict-v0 parser/scorer pure function core
+- result-record assembly helper
+
+Still design targets:
 
 - `run`
 - `aggregate`
 - `prepare-submission`
-- other `validate` subcommands
+- `validate summary`
+- `validate manifest`
+- `validate submission`
+- `validate model`
+- `validate model-repo`
 - `verify-integrity`
 - `report`
 - `collect`
@@ -55,8 +65,6 @@ git clone
   -> commit or open a PR when enough results are collected
 ```
 
-There is no built-in proof that a claimed model truly generated a result. Local outputs are measurement logs for analysis, not certified benchmark records.
-
 Local scratch outputs should go under `results/`, which is ignored by Git. Shareable result packages should be prepared under `submissions/<submitter_id>/<run_id>/` and committed or submitted by pull request.
 
 For scalable result collection, the preferred long-term data layout is:
@@ -73,34 +81,19 @@ Model-specific data repositories should use `model.toml`; see `docs/model_reposi
 
 Submitter and run identifiers should follow `docs/submitter_identity.md` so repeated runs from the same user and different machines do not collide.
 
-## Current status
+## Current repository focus
 
-The project is in the v0.0 design/smoke-test phase.
+The repository currently contains:
 
-Current repository contents focus on:
-
-- item format
-- prompt design
-- parser and scoring design
-- result format
-- problem data policy
-- validation design
-- error code policy
-- fixture policy
-- CI policy
-- implementation plan
-- submitter/run identity policy
-- package-level integrity and tamper detection
-- model-repository operating model
-- model repository metadata schema
-- scoring/conceptual model
-- research rationale and plan
-- schemas for item/result/environment/summary/manifest/model records
-- one-item smoke dataset
-- schema-compliant reference examples
-- copyable model repository skeleton
-- minimal Python package skeleton
-- minimal `validate items` implementation
+- item/result/environment/summary/manifest/model schemas;
+- one-item `smoke_v0` dataset;
+- parser/scorer and result-format specifications;
+- fill-class policy;
+- fixture policy and parser/result validation fixtures;
+- minimal `validate items` and `validate results` commands;
+- strict-v0 parser/scorer core;
+- result-record assembly helper;
+- package-level integrity design.
 
 The first dataset, `smoke_v0`, is intentionally small. It is for validating the pipeline and collecting local probe statistics, not for broad model evaluation.
 
@@ -135,9 +128,7 @@ These fields prevent prompt changes, blank rendering changes, fallback extractio
 
 ## Integrity boundary
 
-`llmclozestat` supports package-level integrity checks through `manifest.json` for publishable submissions.
-
-This can detect later changes to submitted files. It does not prove that the claimed model generated the outputs.
+`manifest.json` is for package-level tamper detection of publishable submissions. It can detect later changes to submitted files. It does not verify model execution.
 
 `manifest.json` is required for publishable submissions under `submissions/<submitter_id>/<run_id>/`. Local scratch results under `results/` may omit it, but they should be treated as unverified.
 
@@ -145,9 +136,7 @@ This can detect later changes to submitted files. It does not prove that the cla
 
 - Not a four-choice benchmark.
 - Not an official leaderboard.
-- Not an authentication system for model execution.
-- Not proof that a claimed model truly generated a result.
-- Not an execution attestation system.
+- Not a verifier for model execution.
 - Not an LLM-judge scoring framework.
 - Not a web dashboard.
 
@@ -208,9 +197,7 @@ submissions/<submitter_id>/<run_id>/
   manifest.json
 ```
 
-This is still self-reported data. The project does not certify that a submitted result was honestly produced by a claimed model.
-
-For large or repeated result collection, prefer a separate model repository and keep this core repository focused on the CLI, schemas, documentation, smoke data, and small examples.
+This is self-reported measurement data. For large or repeated result collection, prefer a separate model repository and keep this core repository focused on the CLI, schemas, documentation, smoke data, and small examples.
 
 ## Documentation
 
