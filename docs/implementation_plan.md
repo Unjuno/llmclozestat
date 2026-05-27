@@ -23,7 +23,7 @@ Do not start with the long-running worker or PR automation. Those depend on the 
 
 ## Phase 0: documentation and schema baseline
 
-Status: mostly complete as design work.
+Status: complete as implementation specification; not yet implemented.
 
 Scope:
 
@@ -43,12 +43,12 @@ Scope:
 Exit criteria:
 
 ```text
-[ ] schemas are present
-[ ] docs define result format and scoring policy
-[ ] smoke dataset exists
-[ ] examples/smoke_v0 exists
-[ ] examples/model_repository exists
-[ ] README links the main docs
+[x] schemas are present
+[x] docs define result format and scoring policy
+[x] smoke dataset exists
+[x] examples/smoke_v0 exists
+[x] examples/model_repository exists
+[x] README links the main docs
 ```
 
 ## Phase 1: item loading and item validation
