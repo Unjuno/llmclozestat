@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/llmclozestat/schemas/validation_output.schema.json",
+  "title": "llmclozestat validation output",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["status", "errors", "warnings", "info"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["passed", "failed"]
+    },
+    "errors": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/message"}
+    },
+    "warnings": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/message"}
+    },
+    "info": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/info"}
+    }
+  },
+  "$defs": {
+    "message": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["code", "message", "path"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "message": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1},
+        "severity": {
+          "type": "string",
+          "enum": ["ERROR", "WARNING"]
+        }
+      }
+    },
+    "info": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "message": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}
