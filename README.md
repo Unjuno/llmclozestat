@@ -33,6 +33,8 @@ The following commands are still design targets and are not implemented yet:
 
 Use the current documentation as the implementation specification, not as a claim that the full CLI already works.
 
+For a detailed implemented/specified/undefined breakdown, see `docs/status_matrix.md`.
+
 ## Operating model
 
 `llmclozestat` is intended to be a normal local CLI tool.
@@ -216,6 +218,7 @@ For large or repeated result collection, prefer a separate model repository and 
 - `docs/research_rationale.md` — research value and diagnostic comparison rationale
 - `docs/conceptual_model.md` — conceptual model and scoring design
 - `docs/design.md` — project design and scope
+- `docs/status_matrix.md` — implemented/specified/undefined status matrix
 - `docs/operating_model.md` — model-repository, fixed-condition, PR, CI, report, and storage policies
 - `docs/model_repository.md` — model.toml metadata and one-model repository rules
 - `docs/model_repository_usage.md` — practical model repository setup and changing-model guide
