@@ -58,7 +58,8 @@ Examples:
 - `hardware` is missing;
 - dataset has only one item;
 - low number of trials;
-- local scratch results do not have `manifest.json`.
+- local scratch results do not have `manifest.json`;
+- blank-level `fill_class = format_fail` appears in v0 data without an explicit later policy.
 
 ### INFO
 
@@ -169,6 +170,7 @@ Validation code should also check:
 - `blank_parse_pass = false` should usually imply `extracted_fill = null`;
 - `content_pass = true` should imply `fill_class = accepted` unless later policy allows exceptions;
 - `fill_class = near_miss` must not imply `content_pass = true` in v0;
+- `fill_class = format_fail` should be rejected or warned in v0 unless an explicit later policy enables blank-level format failure;
 - `extraction_mode` is one of the supported modes;
 - v0 result records should use only `exact_full_text` or `segment` extraction;
 - `support_mode = zero` implies `f_shot = 0`;
@@ -266,6 +268,8 @@ Validation code should also check:
 - `n_trials` matches the source result records;
 - pass rates are recomputable from raw results;
 - group keys are stable and include prompt/parser/generation grouping fields;
+- group-level `fill_distribution` is an array of entries with `extracted_fill`, `fill_key`, `count`, `rate`, and `fill_class`;
+- parse-fail entries with `extracted_fill = null` use `fill_key = "__PARSE_FAIL__"` unless a later policy defines another sentinel;
 - group-level `fill_distribution` counts and rates match raw extracted fills;
 - `unique_fill_count`, `top_fill`, `top_wrong_fill`, and `mean_entropy` match regenerated aggregation when implemented.
 
@@ -295,8 +299,9 @@ Validation code should also check:
 - every listed file exists;
 - listed paths are relative and do not escape the submission directory;
 - each listed `sha256` matches the actual file content;
-- `package_hash` matches the deterministic package hash calculation;
-- `manifest.json` itself is not included in the package hash input unless a future policy explicitly defines that behavior.
+- `package_hash` matches the deterministic package hash calculation defined in `docs/integrity.md`;
+- `manifest.json`, `signature.json`, and `ledger_receipt.json` are excluded from the v0 package hash input;
+- `size_bytes`, if present, is not included in the v0 package hash input.
 
 `manifest.json` verifies package files. It does not authenticate model execution.
 
