@@ -55,6 +55,29 @@ segments_blanks_mismatch
 
 Do not hide cross-field validation failures under a generic schema error.
 
+### Specific schema-derived codes
+
+Some field-level constraints are already expressible in JSON Schema, but they are important enough to have stable user-facing codes.
+
+Examples:
+
+```text
+empty_accepted_fills
+missing_claim_scope
+empty_expected_full_texts
+```
+
+A validator may map an unambiguous schema failure to a specific code instead of only returning `schema_validation_error`.
+
+Recommended behavior:
+
+```text
+schema violation with known mapping -> specific code + schema detail
+schema violation without known mapping -> schema_validation_error
+```
+
+This allows fixtures to expect `empty_accepted_fills` even when the immediate failure is caused by `minItems: 1` in `item.schema.json`.
+
 ## Severity
 
 Recommended severity values:
@@ -77,7 +100,7 @@ A `WARNING` means the file may be usable but interpretation is weaker or policy-
 |---|---:|---|
 | `json_parse_error` | ERROR | JSON or JSONL line cannot be parsed |
 | `toml_parse_error` | ERROR | TOML file cannot be parsed |
-| `schema_validation_error` | ERROR | File does not conform to its JSON Schema |
+| `schema_validation_error` | ERROR | File does not conform to its JSON Schema and no more specific mapping is available |
 | `path_traversal` | ERROR | A manifest or submission path escapes its package directory |
 | `unsafe_slug` | ERROR | `submitter_id` or similar path component is not a safe slug |
 
