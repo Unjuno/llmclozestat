@@ -31,6 +31,7 @@ Implemented library core:
 ```text
 item JSONL validation core
 strict-v0 parser/scorer pure function core
+result-record assembly helper
 ```
 
 Most command-level behavior is still specified but not implemented.
@@ -130,17 +131,18 @@ validation output contract shape for pass/fail
 | reference example package | specified fixture | `examples/smoke_v0` exists | Not verified by implemented manifest/summary code |
 | model repository skeleton | specified template | `examples/model_repository` exists | No copier or scaffold command |
 
-## Parser and scoring status
+## Parser, scoring, and result-record status
 
 | Area | Status | Defined behavior | Current state / gap |
 |---|---|---|---|
-| raw output preservation | partially implemented | Result records should preserve `raw_output` | Pure function returns `raw_output`; not yet connected to result JSONL writer |
+| raw output preservation | partially implemented | Result records should preserve `raw_output` | Pure parser/scorer and result-record helper preserve it |
 | normalization | partially implemented | v0 minimal normalization is intended | Implements newline normalization and trim only |
 | exact full-text extraction | partially implemented | v0 extraction mode | Implemented in pure parser/scorer function and fixture-tested |
 | segment extraction | partially implemented | v0 extraction mode | Implemented for simple ordered segment extraction and fixture-tested |
 | fallback extraction | deferred | Not in MVP | No implementation, intentionally |
 | fill classification | partially implemented | accepted / near_miss / known_wrong / wrong / parse_fail | Implemented and fixture-tested for initial cases |
 | strict-pass formula | partially implemented | `instruction_following_pass and item_format_pass and all content_pass` | Implemented in pure function; not yet result-validator enforced |
+| result-record assembly | partially implemented | parser/scorer output plus run/model/prompt/generation metadata | Implemented as a pure helper; not yet JSONL writer or CLI-integrated |
 | parser/scorer CLI surface | specified | future result generation should use parser/scorer | No CLI command or runner integration |
 | repeated fill counting | specified | Do not deduplicate repeated fills | No aggregation implementation |
 
@@ -154,6 +156,14 @@ known_wrong classification
 generic wrong classification
 instruction-wrapper parse failure
 segment parse failure
+```
+
+Current result-record tests cover:
+
+```text
+required result fields are present
+parser/scorer output is preserved in the assembled record
+missing required metadata raises an error
 ```
 
 ## Aggregation and reporting status
@@ -194,9 +204,10 @@ segment parse failure
 
 | Area | Status | Current state | Gap |
 |---|---|---|---|
-| unit test workflow | implemented | `.github/workflows/ci.yml` runs unittest | User visually confirmed no current failures before parser changes; recheck after parser changes |
+| unit test workflow | implemented | `.github/workflows/ci.yml` runs unittest | User visually confirmed no current failures before result-record changes; recheck after latest changes |
 | item fixture regression | implemented | unittest checks valid/invalid item fixtures | No full schema validator test |
 | parser fixture regression | implemented | unittest checks parser fixtures against pure parser/scorer output | No result schema validation yet |
+| result-record assembly regression | implemented | unittest checks required fields, preserved parser output, and missing metadata error | No result schema execution test yet |
 | expected error-code registry regression | implemented | unittest checks fixture expected codes are registered in docs/error_codes.md | None for current item fixtures |
 | validation output contract regression | partially implemented | Tests check `status/errors/warnings/info` shape without JSON Schema execution | No schema execution test yet |
 | changed-path PR classification | specified | CI policy defines it | No implementation |
@@ -206,7 +217,7 @@ segment parse failure
 
 ## Undefined or insufficiently defined areas
 
-These are not blockers for current `validate items` or pure parser/scorer fixtures, but they are blockers before later phases.
+These are not blockers for current `validate items`, pure parser/scorer fixtures, or result-record assembly, but they are blockers before later phases.
 
 ### Provider contract
 
@@ -330,6 +341,7 @@ The current library-core boundary is:
 
 ```text
 strict-v0 parser/scorer can parse and score simple one-blank fixture outputs
+result-record helper can assemble parser/scorer output with required run metadata
 ```
 
 The current non-executable design boundary is:
@@ -352,9 +364,9 @@ Do not present non-executable design boundaries as working CLI behavior.
 Before expanding runner or collect, finish Phase 2 cleanup:
 
 ```text
-1. Recheck GitHub Actions after parser/scorer changes.
-2. Add result-record assembly from parser/scorer output only after fixture tests pass.
-3. Add result validation fixtures before implementing validate results.
+1. Recheck GitHub Actions after result-record changes.
+2. Add result validation fixtures before implementing validate results.
+3. Implement validate results as schema-like consistency validation.
 ```
 
 Do not start model execution yet.
