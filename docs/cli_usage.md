@@ -13,16 +13,17 @@ Currently implemented commands:
 - `version`: minimal existing command.
 - `validate items`: minimal item JSONL validation.
 - `validate results`: minimal result JSONL consistency validation.
+- `aggregate`: minimal result JSONL to summary JSON aggregation.
 
 Currently implemented library core:
 
 - strict-v0 parser/scorer pure function core.
 - result-record assembly helper.
+- summary aggregation helper.
 
 Still design targets:
 
 - `run`
-- `aggregate`
 - `prepare-submission`
 - `validate summary`
 - `validate manifest`
@@ -118,6 +119,66 @@ duplicate result identity detection
 ```
 
 This is not yet a complete JSON Schema validator for every constraint in `schemas/result.schema.json`.
+
+## Aggregate command shape
+
+Implemented command:
+
+```bash
+llmclozestat aggregate \
+  --input results/smoke_v0-20260527T143012Z-a7f3c9/run.jsonl \
+  --out results/smoke_v0-20260527T143012Z-a7f3c9/summary.json
+```
+
+Current scope:
+
+```text
+one input result JSONL file
+one output summary JSON file
+overall pass/fail/parse-fail/latency rates
+blank-level fill_distribution
+parse failures represented with __PARSE_FAIL__
+repeated fills counted without deduplication
+```
+
+Current limitations:
+
+```text
+no multi-file or sharded input
+no exclusion filters
+no report regeneration
+no summary validation command yet
+no manifest writing
+```
+
+Aggregators should later support exclusion filters:
+
+```bash
+llmclozestat aggregate \
+  --input submissions \
+  --exclude-submitter-id example-user \
+  --exclude-run-id broken-run-001 \
+  --out reports/summary.json
+```
+
+Aggregators should preserve grouping by:
+
+- `model_id`
+- `dataset_id`
+- `probe_id`
+- `variant_id`
+- `language`
+- `item_id`
+- `blank_id`
+- `prompt_template_id`
+- `prompt_language`
+- `support_mode`
+- `f_shot`
+- `blank_rendering`
+- `extraction_mode`
+- `generation_config` or `generation_config_hash`
+- `submitter_id`
+- `run_id`
 
 ## Collect command shape
 
@@ -232,43 +293,6 @@ Recommended field:
 ```
 
 This avoids treating semantically identical JSON objects as different conditions only because their key order differs.
-
-## Aggregate command shape
-
-```bash
-llmclozestat aggregate \
-  --input results/smoke_v0-20260527T143012Z-a7f3c9/run.jsonl \
-  --out results/smoke_v0-20260527T143012Z-a7f3c9/summary.json
-```
-
-Aggregators should later support exclusion filters:
-
-```bash
-llmclozestat aggregate \
-  --input submissions \
-  --exclude-submitter-id example-user \
-  --exclude-run-id broken-run-001 \
-  --out reports/summary.json
-```
-
-Aggregators should preserve grouping by:
-
-- `model_id`
-- `dataset_id`
-- `probe_id`
-- `variant_id`
-- `language`
-- `item_id`
-- `blank_id`
-- `prompt_template_id`
-- `prompt_language`
-- `support_mode`
-- `f_shot`
-- `blank_rendering`
-- `extraction_mode`
-- `generation_config` or `generation_config_hash`
-- `submitter_id`
-- `run_id`
 
 ## Prepare submission command shape
 
