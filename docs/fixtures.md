@@ -48,6 +48,8 @@ tests/fixtures/
       empty_expected_full_texts.jsonl
       duplicate_normalized_fill.jsonl
       depends_on_unknown_blank.jsonl
+      duplicate_item_id.jsonl
+      duplicate_variant_id.jsonl
 
   results/
     valid/
@@ -136,6 +138,8 @@ Recommended initial invalid fixtures:
 | `empty_expected_full_texts.jsonl` | `expected_full_texts` is empty | `empty_expected_full_texts` |
 | `duplicate_normalized_fill.jsonl` | normalized fill appears in more than one fill class list | `duplicate_normalized_fill` |
 | `depends_on_unknown_blank.jsonl` | `depends_on` references an unknown or later blank | `depends_on_unknown_blank` |
+| `duplicate_item_id.jsonl` | duplicate `item_id` inside one dataset file | `duplicate_item_id` |
+| `duplicate_variant_id.jsonl` | duplicate `variant_id` inside one dataset file | `duplicate_variant_id` |
 
 ## Result fixtures
 
