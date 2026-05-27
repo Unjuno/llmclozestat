@@ -12,13 +12,23 @@ Currently implemented commands:
 
 - `version`: minimal existing command.
 - `validate items`: minimal item JSONL validation.
+- `validate results`: minimal result JSONL consistency validation.
+
+Currently implemented library core:
+
+- strict-v0 parser/scorer pure function core.
+- result-record assembly helper.
 
 Still design targets:
 
 - `run`
 - `aggregate`
 - `prepare-submission`
-- other `validate` subcommands
+- `validate summary`
+- `validate manifest`
+- `validate submission`
+- `validate model`
+- `validate model-repo`
 - `verify-integrity`
 - `report`
 - `collect`
@@ -63,7 +73,7 @@ llmclozestat run \
 
 ## Validate items command shape
 
-Minimal implemented command:
+Implemented command:
 
 ```bash
 llmclozestat validate items \
@@ -82,6 +92,32 @@ basic dataset-level duplicate ID checks
 ```
 
 This is not yet a complete JSON Schema validator for every constraint in `schemas/item.schema.json`.
+
+## Validate results command shape
+
+Implemented command:
+
+```bash
+llmclozestat validate results \
+  --input submissions/example/run/run.jsonl
+```
+
+It returns a JSON validation result and exits with code `1` when errors are present.
+
+Current scope:
+
+```text
+JSONL parse
+schema-like required result fields
+prompt/parser/generation condition field presence
+supported v0 extraction_mode checks
+zero support_mode and f_shot consistency
+blank-level scoring consistency
+item_strict_pass formula consistency
+duplicate result identity detection
+```
+
+This is not yet a complete JSON Schema validator for every constraint in `schemas/result.schema.json`.
 
 ## Collect command shape
 
@@ -119,7 +155,7 @@ llmclozestat collect \
 
 ## Submitter and run identity defaults
 
-`submitter_id` and `run_id` are not authentication. They are provenance fields for filtering, conflict avoidance, and re-aggregation.
+`submitter_id` and `run_id` are provenance fields for filtering, conflict avoidance, and re-aggregation.
 
 Recommended defaults:
 
@@ -279,7 +315,7 @@ llmclozestat verify-integrity \
   --path submissions/<submitter_id>/<run_id>
 ```
 
-This command verifies package hashes only. It does not prove that the claimed model generated the outputs.
+This command verifies package hashes only. It does not verify model execution.
 
 ## Repository-retained data
 
@@ -306,6 +342,6 @@ A user should be able to:
 4. aggregate locally;
 5. decide whether to commit or submit results.
 
-This keeps the tool simple and keeps model authentication, execution attestation, and hosted infrastructure out of scope.
+This keeps the tool simple and keeps hosted infrastructure out of scope.
 
-Package-level manifest hashing is allowed because it only detects later package tampering. It must not be described as model authentication.
+Package-level manifest hashing is allowed because it only detects later package tampering.
