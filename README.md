@@ -115,7 +115,7 @@ cloze item
   -> model behavior profile
 ```
 
-Repeated fills are counted. If a model gives the same wrong fill at the same blank multiple times, those repetitions are treated as evidence of a systematic tendency, not as duplicates to remove.
+Repeated fills are counted. If a model gives the same wrong or known-wrong fill at the same blank multiple times, those repetitions are treated as evidence of a systematic tendency, not as duplicates to remove.
 
 ## Required result metadata
 
@@ -229,7 +229,9 @@ For large or repeated result collection, prefer a separate model repository and 
 - `docs/fixtures.md` — fixture layout, valid/invalid fixture policy, and expected-failure metadata
 - `docs/problem_data_policy.md` — rules for authoring probe items
 - `docs/prompting.md` — prompt templates, support modes, and output contract
+- `docs/fill_class_policy.md` — fill_class vocabulary and content_pass policy
 - `docs/parser_scoring.md` — deterministic extraction and scoring rules
+- `docs/parser_fixture_policy.md` — parser/scorer fixture expectations for Phase 2
 - `docs/result_format.md` — raw result JSONL and aggregate format
 - `docs/validation.md` — validation layers, severity, and command design
 - `docs/integrity.md` — package-level integrity and tamper detection
