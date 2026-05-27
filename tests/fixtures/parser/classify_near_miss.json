@@ -1,0 +1,35 @@
+{
+  "name": "classify_near_miss",
+  "item": {
+    "segments": ["A", "B"],
+    "blanks": [
+      {
+        "blank_id": "blank_1",
+        "position": 1,
+        "accepted_fills": ["alpha"],
+        "near_miss_fills": ["beta"],
+        "known_wrong_fills": ["gamma"]
+      }
+    ],
+    "expected_full_texts": ["AalphaB"]
+  },
+  "raw_output": "AbetaB",
+  "expected": {
+    "normalized_output": "AbetaB",
+    "extraction_mode": "segment",
+    "blank_results": [
+      {
+        "blank_id": "blank_1",
+        "extracted_fill": "beta",
+        "fill_class": "near_miss",
+        "blank_parse_pass": true,
+        "content_pass": false,
+        "parse_fail": false
+      }
+    ],
+    "instruction_following_pass": true,
+    "item_format_pass": true,
+    "item_partial_score": 0.0,
+    "item_strict_pass": false
+  }
+}
