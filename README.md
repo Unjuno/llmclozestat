@@ -24,6 +24,7 @@ Only the minimal Python package skeleton exists. The `version` command exists, b
 - `validate`
 - `verify-integrity`
 - `report`
+- `collect`
 
 Use the current documentation as the implementation specification, not as a claim that the full CLI already works.
 
@@ -168,8 +169,11 @@ See:
 - `examples/model_repository/README.md`
 - `examples/model_repository/model.toml`
 - `examples/model_repository/DATA_LICENSE.md`
+- `examples/model_repository/datasets/pinned/README.md`
 - `examples/model_repository/datasets/pinned/.gitkeep`
+- `examples/model_repository/submissions/README.md`
 - `examples/model_repository/submissions/.gitkeep`
+- `examples/model_repository/reports/README.md`
 - `examples/model_repository/reports/.gitkeep`
 
 This skeleton can be copied into a separate model-specific data repository.
