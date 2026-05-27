@@ -1,0 +1,8 @@
+{
+  "expected_status": "failed",
+  "expected_errors": [
+    {
+      "code": "missing_claim_scope"
+    }
+  ]
+}
