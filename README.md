@@ -76,6 +76,7 @@ Current repository contents focus on:
 - problem data policy
 - validation design
 - CI policy
+- implementation plan
 - package-level integrity and tamper detection
 - model-repository operating model
 - model repository metadata schema
@@ -204,6 +205,7 @@ For large or repeated result collection, prefer a separate model repository and 
 - `docs/model_repository.md` — model.toml metadata and one-model repository rules
 - `docs/model_repository_usage.md` — practical model repository setup and changing-model guide
 - `docs/ci_policy.md` — CI validation, PR classification, report generation, and size policy
+- `docs/implementation_plan.md` — recommended implementation phases and exit criteria
 - `docs/problem_data_policy.md` — rules for authoring probe items
 - `docs/prompting.md` — prompt templates, support modes, and output contract
 - `docs/parser_scoring.md` — deterministic extraction and scoring rules
