@@ -1,0 +1,50 @@
+{
+  "name": "accepted_exact_full_text",
+  "item": {
+    "dataset_id": "parser_fixture_v0",
+    "probe_id": "parser_fixture_probe",
+    "variant_id": "parser_fixture.accepted_exact.en",
+    "language": "en",
+    "primary_skill": "parser_fixture",
+    "item_id": "parser_fixture_accepted_exact",
+    "segments": ["A", "B"],
+    "blanks": [
+      {
+        "blank_id": "blank_1",
+        "position": 1,
+        "primary_skill": "parser_fixture",
+        "context_distance": "local",
+        "accepted_fills": ["x"],
+        "near_miss_fills": ["X"],
+        "known_wrong_fills": ["y"],
+        "expected_error_patterns": []
+      }
+    ],
+    "expected_full_texts": ["AxB"]
+  },
+  "raw_output": "AxB",
+  "parser_config": {
+    "normalization": "v0_minimal",
+    "extraction_modes_enabled": ["exact_full_text", "segment"],
+    "fallback_enabled": false
+  },
+  "expected": {
+    "normalized_output": "AxB",
+    "extraction_mode": "exact_full_text",
+    "blank_results": [
+      {
+        "blank_id": "blank_1",
+        "position": 1,
+        "extracted_fill": "x",
+        "fill_class": "accepted",
+        "blank_parse_pass": true,
+        "content_pass": true,
+        "parse_fail": false
+      }
+    ],
+    "instruction_following_pass": true,
+    "item_format_pass": true,
+    "item_partial_score": 1.0,
+    "item_strict_pass": true
+  }
+}
