@@ -11,7 +11,7 @@ Instead, the project should support tamper detection for submitted result packag
 This layer can help show:
 
 - the submitted files have not changed since the manifest was created;
-- `run.jsonl`, `summary.json`, `summary.md`, and `environment.json` belong to the same package;
+- `run.jsonl` or `run-shards/*.jsonl`, `summary.json`, `summary.md`, and `environment.json` belong to the same package;
 - later reviewers can detect accidental or intentional file modifications;
 - aggregation can reject packages whose hashes no longer match.
 
@@ -48,6 +48,19 @@ A shareable submission package should contain:
 submissions/<submitter_id>/<run_id>/
   environment.json
   run.jsonl
+  summary.json
+  summary.md
+  manifest.json
+```
+
+For larger runs, the package may contain sharded raw results:
+
+```text
+submissions/<submitter_id>/<run_id>/
+  environment.json
+  run-shards/
+    run-000001.jsonl
+    run-000002.jsonl
   summary.json
   summary.md
   manifest.json
@@ -93,21 +106,77 @@ Recommended manifest fields:
       "sha256": "..."
     }
   ],
-  "package_hash": "sha256:..."
+  "package_hash": "sha256:...",
+  "package_hash_input": "canonical_json(files sorted by path; fields path,sha256 only; utf-8; no extra whitespace)"
 }
 ```
 
-`package_hash` should be computed deterministically from the sorted file list and file hashes, not from filesystem metadata.
+## File hash calculation
+
+For each listed file:
+
+```text
+file_sha256 = SHA256(raw file bytes)
+```
+
+The hash input is the exact byte content of the file as stored in the package.
+
+Do not normalize line endings or JSON formatting before hashing individual files.
+
+## Package hash canonicalization
+
+`package_hash` must be computed deterministically from a canonical JSON object, not from filesystem metadata.
+
+Canonical package hash input object:
+
+```json
+{
+  "files": [
+    {"path": "environment.json", "sha256": "..."},
+    {"path": "run.jsonl", "sha256": "..."},
+    {"path": "summary.json", "sha256": "..."},
+    {"path": "summary.md", "sha256": "..."}
+  ],
+  "hash_algorithm": "sha256",
+  "manifest_version": "0.1",
+  "run_id": "smoke-local-model-20260525",
+  "submitter_id": "github-username-or-local-name"
+}
+```
+
+Canonicalization rules:
+
+```text
+1. Exclude manifest.json from files.
+2. Exclude signature.json and ledger_receipt.json from v0 package_hash input.
+3. Include only these file entry fields: path, sha256.
+4. Do not include size_bytes in package_hash input.
+5. Sort files by path using bytewise ascending UTF-8 path order.
+6. Sort JSON object keys lexicographically at every object level.
+7. Serialize as UTF-8 JSON with no insignificant whitespace.
+8. Do not escape non-ASCII characters unless required by the JSON encoder for correctness.
+9. Hash the resulting UTF-8 bytes with SHA-256.
+10. Store the result as package_hash = "sha256:<64 lowercase hex>".
+```
+
+Recommended `package_hash_input` description string:
+
+```text
+canonical_json(v0: keys sorted; files sorted by path; file fields path,sha256; exclude manifest/signature/ledger; utf-8; compact)
+```
+
+This description is not itself hashed. It documents the intended algorithm.
 
 ## Verification
 
 A verifier should check:
 
 - each listed file exists;
+- listed paths are relative and do not escape the package directory;
 - each file hash matches the manifest;
 - `package_hash` matches the deterministic manifest calculation;
 - `submitter_id` and `run_id` match the submission path;
-- `summary.json` can be regenerated from `run.jsonl` when aggregation code is available.
+- `summary.json` can be regenerated from `run.jsonl` or `run-shards/*.jsonl` when aggregation code is available.
 
 If any hash check fails, the package should be excluded from trusted aggregate reports.
 
