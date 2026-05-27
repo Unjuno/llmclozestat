@@ -1,6 +1,6 @@
 # Schemas
 
-This directory contains JSON Schemas for early `llmclozestat` records and repository metadata.
+This directory contains JSON Schemas for early `llmclozestat` records, derived summaries, manifests, and repository metadata.
 
 The schemas are intended to prevent obvious data breakage while the project is still in the v0.0 design and smoke-test phase. They define required record shape, while deeper consistency checks remain the responsibility of validation code.
 
@@ -10,6 +10,8 @@ The schemas are intended to prevent obvious data breakage while the project is s
 schemas/item.schema.json
 schemas/result.schema.json
 schemas/environment.schema.json
+schemas/summary.schema.json
+schemas/manifest.schema.json
 schemas/model.schema.json
 ```
 
@@ -86,6 +88,46 @@ Required prompt/parser environment fields include:
 - `blank_rendering`
 - `parser_config`
 
+### summary.schema.json
+
+Validates:
+
+```text
+summary.json
+```
+
+It checks the shape of derived aggregate data such as:
+
+- run identity;
+- dataset identity;
+- model identity;
+- trial counts;
+- pass rates;
+- group-level fill distributions;
+- prompt/parser/generation grouping keys.
+
+`summary.json` is a derived file. It should be reproducible from raw results. Schema validity alone is not enough; validation code should also regenerate or cross-check it from `run.jsonl` or `run-shards/*.jsonl`.
+
+### manifest.schema.json
+
+Validates:
+
+```text
+manifest.json
+```
+
+It checks the shape of package-level integrity metadata:
+
+- manifest version;
+- submitter and run identity;
+- creation timestamp;
+- hash algorithm;
+- listed files;
+- per-file SHA-256 values;
+- package hash.
+
+`manifest.json` verifies package file hashes. It is not model authentication.
+
 ### model.schema.json
 
 Validates the parsed object form of:
@@ -132,6 +174,8 @@ Examples of checks that should be handled by code rather than schema alone:
 - `content_pass = true` implies `fill_class = accepted` in v0;
 - `item_strict_pass` matches the documented strict-pass formula;
 - `generation_config_hash` matches canonical JSON for `generation_config` when present;
+- `summary.json` matches regenerated aggregation;
+- `manifest.json` hashes match package files;
 - `environment.json.model_id` matches all result records;
 - `model.toml.model.model_id` matches all submissions in a model repository.
 
@@ -173,6 +217,8 @@ The CLI should eventually provide:
 llmclozestat validate items --dataset datasets/smoke_v0/items.jsonl
 llmclozestat validate results --input results/example/run.jsonl
 llmclozestat validate environment --input submissions/example/run/environment.json
+llmclozestat validate summary --input submissions/example/run/summary.json
+llmclozestat validate manifest --input submissions/example/run/manifest.json
 llmclozestat validate model --input model.toml
 llmclozestat validate submission --path submissions/<submitter_id>/<run_id>
 llmclozestat verify-integrity --path submissions/<submitter_id>/<run_id>
