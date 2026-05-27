@@ -1,0 +1,34 @@
+[model]
+model_id = "example-model-q4km"
+family = "example"
+source = "local"
+source_repo = "unknown"
+revision = "unknown"
+quantization = "Q4_K_M"
+backend = "lm_studio"
+backend_version = "unknown"
+context_window = 4096
+notes = "Example model repository metadata. Do not treat this as a real measured model."
+
+[policy]
+one_model_repo = true
+allow_mixed_model_ids = false
+
+[default_condition.prompt]
+prompt_template_id = "fill_full_sentence_v1.ja"
+prompt_language = "ja"
+support_mode = "zero"
+f_shot = 0
+blank_rendering = "（　　　）"
+
+[default_condition.generation]
+temperature = 0
+top_p = 1
+seed = 1
+max_tokens = 64
+repeat_penalty = 1.0
+
+[default_condition.parser]
+normalization = "v0_minimal"
+extraction_modes_enabled = ["exact_full_text", "segment"]
+fallback_extraction_enabled = false
