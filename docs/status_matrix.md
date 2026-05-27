@@ -24,6 +24,7 @@ Implemented CLI surface:
 ```text
 llmclozestat version
 llmclozestat validate items --dataset <items.jsonl>
+llmclozestat validate results --input <run.jsonl>
 ```
 
 Implemented library core:
@@ -32,9 +33,10 @@ Implemented library core:
 item JSONL validation core
 strict-v0 parser/scorer pure function core
 result-record assembly helper
+result JSONL validation core
 ```
 
-Most command-level behavior is still specified but not implemented.
+Most command-level behavior beyond item/result validation is still specified but not implemented.
 
 ## Status terms
 
@@ -53,7 +55,7 @@ Most command-level behavior is still specified but not implemented.
 |---|---|---|---|
 | `version` | implemented | Prints package version | None for v0 |
 | `validate items` | partially implemented | Validates JSONL parse, required/minItems-like item fields, selected cross-field checks, duplicate item/variant IDs | Not a complete JSON Schema validator |
-| `validate results` | specified | Result validation design exists | No implementation |
+| `validate results` | partially implemented | Validates JSONL parse, required result fields, condition fields, and selected scoring consistency rules | Not a complete JSON Schema validator |
 | `validate summary` | specified | Summary validation design exists | No implementation |
 | `validate manifest` | specified | Manifest validation design exists | No implementation |
 | `validate submission` | specified | Submission validation design exists | No implementation |
@@ -95,13 +97,45 @@ JSON object with status/errors/warnings/info
 exit code 1 when errors exist
 ```
 
-Current tests cover:
+Current item tests cover:
 
 ```text
 smoke_v0 passes
 valid item fixture passes
 invalid item fixtures fail with expected metadata codes
 fixture expected codes are registered in docs/error_codes.md
+validation output contract shape for pass/fail
+```
+
+## Implemented result validation scope
+
+`validate results` currently checks:
+
+```text
+file existence
+JSONL parseability
+line is JSON object
+selected required result fields
+required prompt/parser/generation condition fields
+v0 extraction_mode support
+support_mode zero with f_shot consistency
+blank_results non-empty
+duplicate blank_id inside one result record
+content_pass and fill_class consistency
+near_miss is not content-pass
+parse_fail and blank_parse_pass consistency
+parse_fail with extracted_fill warning
+reserved blank-level format_fail warning
+item_strict_pass formula consistency
+duplicate result identity tuple
+```
+
+Current result tests cover:
+
+```text
+valid result fixture passes
+invalid result fixtures fail with expected metadata codes
+result fixture expected codes are registered in docs/error_codes.md
 validation output contract shape for pass/fail
 ```
 
@@ -116,12 +150,22 @@ validation output contract shape for pass/fail
 | richer normalized fill policy | partially specified | Current implementation uses `strip()` only |
 | fixture expected-code registry check against `docs/error_codes.md` | implemented | Tests verify fixture expected codes are registered in docs/error_codes.md |
 
+## Defined but not fully implemented in result validation
+
+| Requirement | Status | Notes |
+|---|---|---|
+| Full `schemas/result.schema.json` validation | partially implemented | Current validator is schema-like, not full JSON Schema |
+| Generation config canonical hash validation | specified | Not implemented |
+| Complete schema enum/type validation | partially implemented | Only selected checks are implemented |
+| Sharded run JSONL validation | specified | Not implemented |
+| Cross-file environment/result/summary consistency | specified | Not implemented |
+
 ## Data and schema status
 
 | Area | Status | Current state | Gap |
 |---|---|---|---|
 | Item schema | specified | `schemas/item.schema.json` exists | Full runtime validation not implemented |
-| Result schema | specified | `schemas/result.schema.json` exists and includes `known_wrong` fill class | No result validator |
+| Result schema | partially implemented | `schemas/result.schema.json` exists and includes `known_wrong` fill class | Full runtime schema validation not implemented |
 | Environment schema | specified | `schemas/environment.schema.json` exists | No environment validator |
 | Summary schema | specified | `schemas/summary.schema.json` exists | No summary validator/regenerator |
 | Manifest schema | specified | `schemas/manifest.schema.json` | No manifest validator/verifier |
@@ -141,9 +185,9 @@ validation output contract shape for pass/fail
 | segment extraction | partially implemented | v0 extraction mode | Implemented for simple ordered segment extraction and fixture-tested |
 | fallback extraction | deferred | Not in MVP | No implementation, intentionally |
 | fill classification | partially implemented | accepted / near_miss / known_wrong / wrong / parse_fail | Implemented and fixture-tested for initial cases |
-| strict-pass formula | partially implemented | `instruction_following_pass and item_format_pass and all content_pass` | Implemented in pure function; not yet result-validator enforced |
-| result-record assembly | partially implemented | parser/scorer output plus run/model/prompt/generation metadata | Implemented as a pure helper; not yet JSONL writer or CLI-integrated |
-| parser/scorer CLI surface | specified | future result generation should use parser/scorer | No CLI command or runner integration |
+| strict-pass formula | partially implemented | `instruction_following_pass and item_format_pass and all content_pass` | Implemented in pure function and result validator checks consistency |
+| result-record assembly | partially implemented | parser/scorer output plus run/model/prompt/generation metadata | Implemented as a pure helper; not yet JSONL writer or runner-integrated |
+| parser/scorer CLI surface | specified | future result generation should use parser/scorer | No run command or model backend integration |
 | repeated fill counting | specified | Do not deduplicate repeated fills | No aggregation implementation |
 
 Current parser/scorer tests cover:
@@ -204,11 +248,12 @@ missing required metadata raises an error
 
 | Area | Status | Current state | Gap |
 |---|---|---|---|
-| unit test workflow | implemented | `.github/workflows/ci.yml` runs unittest | User visually confirmed no current failures before result-record changes; recheck after latest changes |
+| unit test workflow | implemented | `.github/workflows/ci.yml` runs unittest | Recheck after latest result validation changes |
 | item fixture regression | implemented | unittest checks valid/invalid item fixtures | No full schema validator test |
 | parser fixture regression | implemented | unittest checks parser fixtures against pure parser/scorer output | No result schema validation yet |
 | result-record assembly regression | implemented | unittest checks required fields, preserved parser output, and missing metadata error | No result schema execution test yet |
-| expected error-code registry regression | implemented | unittest checks fixture expected codes are registered in docs/error_codes.md | None for current item fixtures |
+| result validation regression | implemented | unittest checks valid/invalid result fixtures and expected codes | No full JSON Schema validation yet |
+| expected error-code registry regression | implemented | unittest checks fixture expected codes are registered in docs/error_codes.md | Applies to item and result fixtures |
 | validation output contract regression | partially implemented | Tests check `status/errors/warnings/info` shape without JSON Schema execution | No schema execution test yet |
 | changed-path PR classification | specified | CI policy defines it | No implementation |
 | result PR restrictions | specified | CI policy defines it | No implementation |
@@ -217,7 +262,7 @@ missing required metadata raises an error
 
 ## Undefined or insufficiently defined areas
 
-These are not blockers for current `validate items`, pure parser/scorer fixtures, or result-record assembly, but they are blockers before later phases.
+These are not blockers for current `validate items`, `validate results`, pure parser/scorer fixtures, or result-record assembly, but they are blockers before later phases.
 
 ### Provider contract
 
@@ -249,7 +294,7 @@ or keep a custom validator
 or use a CLI schema checker in CI only
 ```
 
-Current implementation is schema-like, not complete JSON Schema execution.
+Current validators are schema-like, not complete JSON Schema execution.
 
 ### Normalization policy
 
@@ -335,6 +380,7 @@ The current executable CLI boundary is:
 
 ```text
 local CLI can validate item JSONL enough to protect the smoke dataset and item fixtures
+local CLI can validate result JSONL scoring consistency for initial v0 fixtures
 ```
 
 The current library-core boundary is:
@@ -347,7 +393,6 @@ result-record helper can assemble parser/scorer output with required run metadat
 The current non-executable design boundary is:
 
 ```text
-result JSONL writing
 run command
 summary generation
 manifest integrity
@@ -361,12 +406,13 @@ Do not present non-executable design boundaries as working CLI behavior.
 
 ## Recommended next work
 
-Before expanding runner or collect, finish Phase 2 cleanup:
+Before expanding runner or collect, finish the next validation layer:
 
 ```text
-1. Recheck GitHub Actions after result-record changes.
-2. Add result validation fixtures before implementing validate results.
-3. Implement validate results as schema-like consistency validation.
+1. Recheck GitHub Actions after validate results changes.
+2. Add summary aggregation fixtures.
+3. Implement minimal aggregate summary generation.
+4. Add validate summary after summary generation is fixture-backed.
 ```
 
 Do not start model execution yet.
