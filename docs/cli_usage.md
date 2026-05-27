@@ -6,18 +6,22 @@ Users clone the repository, run evaluations locally, accumulate raw JSONL logs, 
 
 ## Implementation status
 
-This document describes the intended CLI shape. In v0.0, these commands are design targets until implementation is added.
+This document describes the intended CLI shape. In v0.0, most commands are design targets until implementation is added.
 
-Currently expected commands:
+Currently implemented commands:
 
 - `version`: minimal existing command.
-- `run`: design target.
-- `aggregate`: design target.
-- `prepare-submission`: design target.
-- `validate`: design target.
-- `verify-integrity`: design target.
-- `report`: design target.
-- `collect`: design target for one-command run/package/validate/PR-oriented workflows.
+- `validate items`: minimal item JSONL validation.
+
+Still design targets:
+
+- `run`
+- `aggregate`
+- `prepare-submission`
+- other `validate` subcommands
+- `verify-integrity`
+- `report`
+- `collect`
 
 ## Target workflow
 
@@ -56,6 +60,28 @@ llmclozestat run \
   --max-tokens 64 \
   --context-window null
 ```
+
+## Validate items command shape
+
+Minimal implemented command:
+
+```bash
+llmclozestat validate items \
+  --dataset datasets/smoke_v0/items.jsonl
+```
+
+It returns a JSON validation result and exits with code `1` when errors are present.
+
+Current scope:
+
+```text
+JSONL parse
+schema-like required/minItems checks for item data
+item cross-field checks
+basic dataset-level duplicate ID checks
+```
+
+This is not yet a complete JSON Schema validator for every constraint in `schemas/item.schema.json`.
 
 ## Collect command shape
 
