@@ -116,6 +116,7 @@ invalid item fixtures fail with expected metadata codes
 | Summary schema | specified | `schemas/summary.schema.json` exists | No summary validator/regenerator |
 | Manifest schema | specified | `schemas/manifest.schema.json` exists | No manifest validator/verifier |
 | Model schema | specified | `schemas/model.schema.json` exists | No TOML parser/validator |
+| Validation output schema | specified | `schemas/validation_output.schema.json` exists | No JSON Schema execution test yet |
 | smoke dataset | implemented as data | `datasets/smoke_v0/items.jsonl` exists and is covered by tests | Only one item; not broad evaluation data |
 | reference example package | specified fixture | `examples/smoke_v0` exists | Not verified by implemented manifest/summary code |
 | model repository skeleton | specified template | `examples/model_repository` exists | No copier or scaffold command |
@@ -173,6 +174,7 @@ invalid item fixtures fail with expected metadata codes
 |---|---|---|---|
 | unit test workflow | implemented | `.github/workflows/ci.yml` runs unittest | User visually confirmed no current failures |
 | item fixture regression | implemented | unittest checks valid/invalid item fixtures | No full schema validator test |
+| validation output contract regression | partially implemented | Tests check `status/errors/warnings/info` indirectly through validator result dictionaries | No schema execution test yet |
 | changed-path PR classification | specified | CI policy defines it | No implementation |
 | result PR restrictions | specified | CI policy defines it | No implementation |
 | report regeneration on main | specified | CI policy defines it | No implementation |
@@ -230,17 +232,23 @@ case handling for English
 whether normalization differs for extraction vs classification
 ```
 
-### Error output schema
+### Validation output schema execution
 
-Status: partially specified.
+Status: specified but not fully enforced.
 
-Current output has:
+Current output contract has a schema:
+
+```text
+schemas/validation_output.schema.json
+```
+
+The CLI currently emits the required top-level fields:
 
 ```text
 status/errors/warnings/info
 ```
 
-But no formal schema exists for validation output.
+But tests do not yet run a JSON Schema validator against this schema.
 
 ### Resume / overwrite behavior
 
@@ -311,7 +319,7 @@ Before moving to parser/scorer, finish Phase 1 cleanup:
 ```text
 1. Add duplicate_item_id fixture.
 2. Add duplicate_variant_id fixture.
-3. Add a small validation output schema or document the current output contract.
+3. Add a lightweight test for the validation output contract.
 4. Decide whether to introduce jsonschema for full item.schema.json validation.
 ```
 
