@@ -243,6 +243,15 @@ def _validate_item_cross_fields(item: dict[str, Any], item_path: str, result: It
             else:
                 blank_ids[blank_id] = index
 
+        depends_on = blank.get("depends_on")
+        if isinstance(depends_on, str):
+            if depends_on not in blank_ids:
+                result.add_error(
+                    "depends_on_unknown_blank",
+                    f"depends_on references unknown or later blank_id {depends_on!r}",
+                    blank_path,
+                )
+
         position = blank.get("position")
         if isinstance(position, int):
             position_values.append(position)
