@@ -232,6 +232,8 @@ Each blank is scored independently.
 
 Do not use `format_pass` at the blank level. Use `blank_parse_pass` to avoid confusion with item-level format compliance.
 
+`fill_class = format_fail` is reserved. In v0, validators should reject or warn on blank-level `format_fail` unless an explicit later policy enables it. Prefer item-level `instruction_following_pass = false` and `item_format_pass = false`; if a blank-specific fill cannot be extracted, use `fill_class = parse_fail` for that blank.
+
 ## Item-level scoring
 
 - `instruction_following_pass`: true when the model followed the explicit completed-sentence output instruction.
@@ -276,6 +278,14 @@ Recommended grouping keys:
 - `extraction_mode`
 - `generation_config` or `generation_config_hash`
 
+`fill_distribution` should be an array of entries, not a JSON object keyed only by fill text. This supports `extracted_fill = null` for parse failures.
+
+Recommended parse-fail key:
+
+```text
+__PARSE_FAIL__
+```
+
 Example:
 
 ```json
@@ -286,11 +296,12 @@ Example:
   "item_id": "mirror_perspective_0001",
   "blank_id": "blank_1",
   "n_trials": 10,
-  "fill_distribution": {
-    "右": {"count": 7, "rate": 0.7, "fill_class": "accepted"},
-    "左": {"count": 3, "rate": 0.3, "fill_class": "wrong"}
-  },
-  "unique_fill_count": 2,
+  "fill_distribution": [
+    {"extracted_fill": "右", "fill_key": "右", "count": 7, "rate": 0.7, "fill_class": "accepted"},
+    {"extracted_fill": "左", "fill_key": "左", "count": 2, "rate": 0.2, "fill_class": "wrong"},
+    {"extracted_fill": null, "fill_key": "__PARSE_FAIL__", "count": 1, "rate": 0.1, "fill_class": "parse_fail"}
+  ],
+  "unique_fill_count": 3,
   "top_fill": "右",
   "top_wrong_fill": "左"
 }
