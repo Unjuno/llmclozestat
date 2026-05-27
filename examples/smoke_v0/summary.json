@@ -26,13 +26,15 @@
       "extraction_mode": "exact_full_text",
       "generation_config_hash": "sha256:972c22112d39dce4e82ce1b0b1192f18b787ac42f56847c82e5c2f1866c82ac3",
       "n_trials": 1,
-      "fill_distribution": {
-        "右": {
+      "fill_distribution": [
+        {
+          "extracted_fill": "右",
+          "fill_key": "右",
           "count": 1,
           "rate": 1.0,
           "fill_class": "accepted"
         }
-      },
+      ],
       "unique_fill_count": 1,
       "top_fill": "右",
       "top_wrong_fill": null,
