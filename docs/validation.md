@@ -14,6 +14,9 @@ schema validation
   -> dataset-level validation
   -> result-level validation
   -> environment validation
+  -> summary validation
+  -> manifest validation
+  -> model repository validation
   -> submission package validation
   -> package integrity validation
 ```
@@ -37,6 +40,7 @@ Examples:
 - result record missing `submitter_id` or `run_id`;
 - publishable submission missing `manifest.json`;
 - manifest hash mismatch;
+- summary cannot be regenerated from raw results;
 - current-schema item missing `claim_scope`;
 - one-model submission contains more than one `model_id`.
 
@@ -236,6 +240,95 @@ Validation code should check:
 
 Missing fields such as `seed`, `backend_version`, `quantization`, or `hardware` should usually be warnings, not errors.
 
+## Summary validation
+
+Input:
+
+```text
+summary.json
+```
+
+### Schema checks
+
+The file should validate against:
+
+```text
+schemas/summary.schema.json
+```
+
+### Consistency checks
+
+Schema validity is not enough because `summary.json` is derived data.
+
+Validation code should also check:
+
+- `submitter_id`, `run_id`, `dataset_id`, and `model_id` match the source result records;
+- `n_trials` matches the source result records;
+- pass rates are recomputable from raw results;
+- group keys are stable and include prompt/parser/generation grouping fields;
+- group-level `fill_distribution` counts and rates match raw extracted fills;
+- `unique_fill_count`, `top_fill`, `top_wrong_fill`, and `mean_entropy` match regenerated aggregation when implemented.
+
+If `summary.json` does not match regenerated aggregation, treat it as an error for publishable submissions.
+
+## Manifest validation
+
+Input:
+
+```text
+manifest.json
+```
+
+### Schema checks
+
+The file should validate against:
+
+```text
+schemas/manifest.schema.json
+```
+
+### Consistency checks
+
+Validation code should also check:
+
+- `submitter_id` and `run_id` match the submission path and `environment.json`;
+- every listed file exists;
+- listed paths are relative and do not escape the submission directory;
+- each listed `sha256` matches the actual file content;
+- `package_hash` matches the deterministic package hash calculation;
+- `manifest.json` itself is not included in the package hash input unless a future policy explicitly defines that behavior.
+
+`manifest.json` verifies package files. It does not authenticate model execution.
+
+## Model repository validation
+
+Input:
+
+```text
+model.toml
+```
+
+### Schema checks
+
+The TOML file should be parsed into an object and validate against:
+
+```text
+schemas/model.schema.json
+```
+
+### Consistency checks
+
+Validation code should also check:
+
+- `policy.one_model_repo = true`;
+- `model.model_id` is filesystem- and URL-friendly;
+- every submission in the model repository uses `model.model_id`;
+- every `environment.json.model_id` matches `model.model_id`;
+- all result records in every submission use `model.model_id`;
+- `allow_mixed_model_ids = true` is unsupported in MVP unless explicitly allowed by a future policy.
+
+`model.toml` is provenance metadata. It does not prove model execution authenticity.
+
 ## Submission package validation
 
 Input:
@@ -345,6 +438,50 @@ Planned CLI shape:
 ```bash
 llmclozestat validate environment \
   --input submissions/example/run/environment.json
+```
+
+## Summary validation commands
+
+Planned CLI shape:
+
+```bash
+llmclozestat validate summary \
+  --input submissions/example/run/summary.json \
+  --results submissions/example/run/run.jsonl
+```
+
+For sharded results:
+
+```bash
+llmclozestat validate summary \
+  --input submissions/example/run/summary.json \
+  --results submissions/example/run/run-shards
+```
+
+## Manifest validation commands
+
+Planned CLI shape:
+
+```bash
+llmclozestat validate manifest \
+  --input submissions/example/run/manifest.json \
+  --package-dir submissions/example/run
+```
+
+## Model repository validation commands
+
+Planned CLI shape:
+
+```bash
+llmclozestat validate model \
+  --input model.toml
+```
+
+For a model repository:
+
+```bash
+llmclozestat validate model-repo \
+  --path .
 ```
 
 ## Submission validation commands
