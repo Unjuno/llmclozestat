@@ -14,6 +14,7 @@ Parser and scorer should:
 - record the active `extraction_mode`;
 - score each blank independently;
 - distinguish instruction-following failure, item-format failure, and blank-level parse failure;
+- distinguish known wrong fills from generic unknown wrong fills;
 - avoid LLM-based judging in v0.x;
 - record enough metadata for later aggregation.
 
@@ -45,7 +46,8 @@ The item must contain:
 - `blanks`;
 - `expected_full_texts`;
 - `accepted_fills` per blank;
-- `near_miss_fills` per blank.
+- `near_miss_fills` per blank;
+- `known_wrong_fills` per blank.
 
 `parser_config` should record at least:
 
@@ -223,6 +225,8 @@ Such records must not be mixed with strict v0 extraction records unless grouped 
 
 ## Fill classification
 
+The v0 fill-class vocabulary is defined in `docs/fill_class_policy.md`.
+
 For each blank:
 
 ```text
@@ -232,9 +236,13 @@ elif extracted_fill in accepted_fills:
   fill_class = accepted
 elif extracted_fill in near_miss_fills:
   fill_class = near_miss
+elif extracted_fill in known_wrong_fills:
+  fill_class = known_wrong
 else:
   fill_class = wrong
 ```
+
+`known_wrong` is distinct from generic `wrong`. It marks expected, interpretable error patterns from `known_wrong_fills`.
 
 `format_fail` is reserved for output-contract problems. In v0, prefer item-level `instruction_following_pass = false` and `item_format_pass = false`; if a blank-specific fill cannot be extracted, use `fill_class = parse_fail` for that blank.
 
@@ -246,7 +254,7 @@ else:
 content_pass = (fill_class == accepted)
 ```
 
-Near-miss fills are not content-pass unless a later policy explicitly defines partial credit.
+Near-miss, known-wrong, generic wrong, parse-fail, and reserved format-fail fills are not content-pass unless a later policy explicitly defines partial credit.
 
 ## Item partial score
 
@@ -302,7 +310,7 @@ Do not use similarity scores as the primary pass/fail rule in v0.
 
 Do not deduplicate repeated fills across trials.
 
-If the same wrong fill appears 100 times, count it 100 times. Repeated wrong fills are evidence of a systematic tendency.
+If the same wrong or known-wrong fill appears 100 times, count it 100 times. Repeated wrong fills are evidence of a systematic tendency.
 
 ## Determinism
 
@@ -339,7 +347,7 @@ v0 should implement:
 - segment-based extraction;
 - required `extraction_mode` recording;
 - output-instruction-following flag;
-- explicit accepted/near-miss/wrong classification;
+- explicit accepted/near-miss/known-wrong/wrong classification;
 - item partial score;
 - item strict pass;
 - repeated fill counting;
