@@ -28,17 +28,17 @@ They do not call any model backend.
 
 ## Fixture layout
 
-Recommended layout:
+Current layout:
 
 ```text
 tests/fixtures/parser/
   README.md
   accepted_exact_full_text.json
   accepted_segment.json
-  near_miss_not_content_pass.json
-  known_wrong_not_content_pass.json
-  generic_wrong_not_content_pass.json
-  instruction_prefix_parse_fail.json
+  classify_near_miss.json
+  classify_known_wrong.json
+  classify_wrong.json
+  instruction_wrapper_parse_fail.json
   segment_parse_fail.json
 ```
 
@@ -54,16 +54,18 @@ Each fixture should contain:
 }
 ```
 
+`parser_config` may be omitted in minimal fixtures only when the default strict-v0 parser configuration is intended.
+
 ## Required initial fixtures
 
 | Fixture | Purpose |
 |---|---|
 | `accepted_exact_full_text.json` | exact full-text match produces accepted strict pass |
 | `accepted_segment.json` | segment extraction can extract an accepted fill |
-| `near_miss_not_content_pass.json` | near-miss is classified but not content-pass |
-| `known_wrong_not_content_pass.json` | known wrong is separate from generic wrong and not content-pass |
-| `generic_wrong_not_content_pass.json` | unknown wrong fill is generic `wrong` and not content-pass |
-| `instruction_prefix_parse_fail.json` | output wrapper such as `答えは...` fails item format and parsing in strict v0 |
+| `classify_near_miss.json` | near-miss is classified but not content-pass |
+| `classify_known_wrong.json` | known wrong is separate from generic wrong and not content-pass |
+| `classify_wrong.json` | unknown wrong fill is generic `wrong` and not content-pass |
+| `instruction_wrapper_parse_fail.json` | output wrapper fails item format and parsing in strict v0 |
 | `segment_parse_fail.json` | missing required segments produces parse failure |
 
 ## Expected v0 behavior
@@ -133,12 +135,12 @@ item_strict_pass = false
 item_partial_score = 0.0
 ```
 
-### Instruction prefix parse failure
+### Instruction wrapper parse failure
 
-For output such as:
+For output wrappers such as:
 
 ```text
-答えは右です。
+Answer: alpha
 ```
 
 Expected in strict v0 without fallback extraction:
