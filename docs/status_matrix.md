@@ -93,6 +93,7 @@ Current tests cover:
 smoke_v0 passes
 valid item fixture passes
 invalid item fixtures fail with expected metadata codes
+validation output contract shape for pass/fail
 ```
 
 ## Defined but not fully implemented in item validation
@@ -174,7 +175,7 @@ invalid item fixtures fail with expected metadata codes
 |---|---|---|---|
 | unit test workflow | implemented | `.github/workflows/ci.yml` runs unittest | User visually confirmed no current failures |
 | item fixture regression | implemented | unittest checks valid/invalid item fixtures | No full schema validator test |
-| validation output contract regression | partially implemented | Tests check `status/errors/warnings/info` indirectly through validator result dictionaries | No schema execution test yet |
+| validation output contract regression | partially implemented | Tests check `status/errors/warnings/info` shape without JSON Schema execution | No schema execution test yet |
 | changed-path PR classification | specified | CI policy defines it | No implementation |
 | result PR restrictions | specified | CI policy defines it | No implementation |
 | report regeneration on main | specified | CI policy defines it | No implementation |
@@ -317,10 +318,9 @@ Do not present the non-executable design boundary as working CLI behavior.
 Before moving to parser/scorer, finish Phase 1 cleanup:
 
 ```text
-1. Add duplicate_item_id fixture.
-2. Add duplicate_variant_id fixture.
-3. Add a lightweight test for the validation output contract.
-4. Decide whether to introduce jsonschema for full item.schema.json validation.
+1. Decide whether to introduce jsonschema for full item.schema.json validation.
+2. Optionally add a registry check that fixture expected codes exist in docs/error_codes.md.
+3. Implement warnings for missing_expected_error_patterns if needed before broader datasets.
 ```
 
 Then move to Phase 2:
