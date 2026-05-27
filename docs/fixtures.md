@@ -45,6 +45,9 @@ tests/fixtures/
       position_not_consecutive.jsonl
       empty_accepted_fills.jsonl
       missing_claim_scope.jsonl
+      empty_expected_full_texts.jsonl
+      duplicate_normalized_fill.jsonl
+      depends_on_unknown_blank.jsonl
 
   results/
     valid/
@@ -130,6 +133,9 @@ Recommended initial invalid fixtures:
 | `position_not_consecutive.jsonl` | positions do not start at 1 or skip a value | `position_not_consecutive` |
 | `empty_accepted_fills.jsonl` | a blank has no accepted fills | `empty_accepted_fills` |
 | `missing_claim_scope.jsonl` | current-schema item has no claim scope | `missing_claim_scope` |
+| `empty_expected_full_texts.jsonl` | `expected_full_texts` is empty | `empty_expected_full_texts` |
+| `duplicate_normalized_fill.jsonl` | normalized fill appears in more than one fill class list | `duplicate_normalized_fill` |
+| `depends_on_unknown_blank.jsonl` | `depends_on` references an unknown or later blank | `depends_on_unknown_blank` |
 
 ## Result fixtures
 
