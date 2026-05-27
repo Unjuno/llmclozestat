@@ -52,7 +52,7 @@ Most other behavior is specified but not implemented.
 | `validate model` | specified | `model.toml` validation design exists | No implementation |
 | `validate model-repo` | specified | one-model repository invariant is defined | No implementation |
 | `run` | specified | CLI shape and runner constraints exist | No implementation |
-| `aggregate` | specified | grouping keys and summary shape exist | No implementation |
+| `aggregate` | specified | grouping keys and summary shape exists | No implementation |
 | `prepare-submission` | specified | package layout and manifest requirement exist | No implementation |
 | `verify-integrity` | specified | canonical package hash is defined | No implementation |
 | `report` | specified | report output role is defined | No implementation |
@@ -93,6 +93,7 @@ Current tests cover:
 smoke_v0 passes
 valid item fixture passes
 invalid item fixtures fail with expected metadata codes
+fixture expected codes are registered in docs/error_codes.md
 validation output contract shape for pass/fail
 ```
 
@@ -105,7 +106,7 @@ validation output contract shape for pass/fail
 | warning for `missing_expected_error_patterns` | specified | Not implemented |
 | `not_equivalent_variant_aggregation` warning | specified | Not implemented |
 | richer normalized fill policy | partially specified | Current implementation uses `strip()` only |
-| fixture expected-code registry check against `docs/error_codes.md` | partially implemented | Fixtures read expected metadata; no test yet verifies codes are registered in docs |
+| fixture expected-code registry check against `docs/error_codes.md` | implemented | Tests verify fixture expected codes are registered in docs/error_codes.md |
 
 ## Data and schema status
 
@@ -175,6 +176,7 @@ validation output contract shape for pass/fail
 |---|---|---|---|
 | unit test workflow | implemented | `.github/workflows/ci.yml` runs unittest | User visually confirmed no current failures |
 | item fixture regression | implemented | unittest checks valid/invalid item fixtures | No full schema validator test |
+| expected error-code registry regression | implemented | unittest checks fixture expected codes are registered in docs/error_codes.md | None for current item fixtures |
 | validation output contract regression | partially implemented | Tests check `status/errors/warnings/info` shape without JSON Schema execution | No schema execution test yet |
 | changed-path PR classification | specified | CI policy defines it | No implementation |
 | result PR restrictions | specified | CI policy defines it | No implementation |
@@ -319,8 +321,7 @@ Before moving to parser/scorer, finish Phase 1 cleanup:
 
 ```text
 1. Decide whether to introduce jsonschema for full item.schema.json validation.
-2. Optionally add a registry check that fixture expected codes exist in docs/error_codes.md.
-3. Implement warnings for missing_expected_error_patterns if needed before broader datasets.
+2. Implement warnings for missing_expected_error_patterns if needed before broader datasets.
 ```
 
 Then move to Phase 2:
