@@ -1,0 +1,8 @@
+{
+  "expected_status": "failed",
+  "expected_errors": [
+    {
+      "code": "content_pass_fill_class_inconsistent"
+    }
+  ]
+}
