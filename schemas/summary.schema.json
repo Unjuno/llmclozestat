@@ -33,6 +33,7 @@
     "avg_latency_ms": {"type": ["number", "null"], "minimum": 0},
     "groups": {
       "type": "array",
+      "minItems": 1,
       "items": {
         "type": "object",
         "additionalProperties": true,
@@ -71,12 +72,14 @@
           },
           "n_trials": {"type": "integer", "minimum": 0},
           "fill_distribution": {
-            "type": "object",
-            "additionalProperties": {
+            "type": "array",
+            "items": {
               "type": "object",
               "additionalProperties": true,
-              "required": ["count", "rate", "fill_class"],
+              "required": ["extracted_fill", "fill_key", "count", "rate", "fill_class"],
               "properties": {
+                "extracted_fill": {"type": ["string", "null"]},
+                "fill_key": {"type": "string", "minLength": 1},
                 "count": {"type": "integer", "minimum": 0},
                 "rate": {"type": "number", "minimum": 0, "maximum": 1},
                 "fill_class": {"type": "string", "minLength": 1}
