@@ -98,6 +98,7 @@ A `WARNING` means the file may be usable but interpretation is weaker or policy-
 
 | Code | Severity | Meaning |
 |---|---:|---|
+| `file_not_found` | ERROR | Input file does not exist |
 | `json_parse_error` | ERROR | JSON or JSONL line cannot be parsed |
 | `toml_parse_error` | ERROR | TOML file cannot be parsed |
 | `schema_validation_error` | ERROR | File does not conform to its JSON Schema and no more specific mapping is available |
