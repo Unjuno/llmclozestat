@@ -50,6 +50,24 @@ class ItemValidationTests(unittest.TestCase):
         )
         self.assert_error_code(result, "missing_claim_scope")
 
+    def test_empty_expected_full_texts_fixture_fails_with_expected_code(self) -> None:
+        result = validate_items_file(
+            ROOT / "tests" / "fixtures" / "items" / "invalid" / "empty_expected_full_texts.jsonl"
+        )
+        self.assert_error_code(result, "empty_expected_full_texts")
+
+    def test_duplicate_normalized_fill_fixture_fails_with_expected_code(self) -> None:
+        result = validate_items_file(
+            ROOT / "tests" / "fixtures" / "items" / "invalid" / "duplicate_normalized_fill.jsonl"
+        )
+        self.assert_error_code(result, "duplicate_normalized_fill")
+
+    def test_depends_on_unknown_blank_fixture_fails_with_expected_code(self) -> None:
+        result = validate_items_file(
+            ROOT / "tests" / "fixtures" / "items" / "invalid" / "depends_on_unknown_blank.jsonl"
+        )
+        self.assert_error_code(result, "depends_on_unknown_blank")
+
     def assert_error_code(self, result, expected_code: str) -> None:
         self.assertTrue(result.failed, result.to_dict())
         codes = {error.code for error in result.errors}
