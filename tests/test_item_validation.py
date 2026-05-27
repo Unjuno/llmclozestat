@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 import unittest
 
@@ -9,6 +10,8 @@ from llmclozestat.item_validation import validate_items_file
 
 ROOT = Path(__file__).resolve().parents[1]
 ITEM_FIXTURES = ROOT / "tests" / "fixtures" / "items"
+ERROR_CODES_DOC = ROOT / "docs" / "error_codes.md"
+ERROR_CODE_PATTERN = re.compile(r"\| `([^`]+)` \|")
 
 
 class ItemValidationTests(unittest.TestCase):
@@ -57,6 +60,23 @@ class ItemValidationTests(unittest.TestCase):
                     self.assertIsInstance(entry["code"], str)
                     self.assertTrue(entry["code"])
 
+    def test_fixture_expected_codes_are_registered(self) -> None:
+        registered_codes = self.load_registered_error_codes()
+        self.assertGreater(len(registered_codes), 0, "No registered error codes found")
+
+        for fixture_path in sorted((ITEM_FIXTURES / "invalid").glob("*.jsonl")):
+            with self.subTest(fixture=fixture_path.name):
+                expected = self.load_expected_metadata(fixture_path)
+                expected_codes = {entry["code"] for entry in expected["expected_errors"]}
+                missing = expected_codes - registered_codes
+                self.assertFalse(
+                    missing,
+                    {
+                        "fixture": fixture_path.name,
+                        "missing_registered_codes": sorted(missing),
+                    },
+                )
+
     def test_validation_output_contract_shape_for_success(self) -> None:
         result = validate_items_file(ROOT / "datasets" / "smoke_v0" / "items.jsonl")
         self.assert_validation_output_contract(result.to_dict(), expected_status="passed")
@@ -102,6 +122,10 @@ class ItemValidationTests(unittest.TestCase):
         expected_path = fixture_path.with_suffix(".expected.json")
         with expected_path.open("r", encoding="utf-8") as handle:
             return json.load(handle)
+
+    def load_registered_error_codes(self) -> set[str]:
+        content = ERROR_CODES_DOC.read_text(encoding="utf-8")
+        return set(ERROR_CODE_PATTERN.findall(content))
 
 
 if __name__ == "__main__":
