@@ -43,6 +43,18 @@ def aggregate_results_file(input_path: Path) -> dict[str, Any]:
     return aggregate_result_records(records)
 
 
+def write_summary_file(input_path: Path, output_path: Path) -> dict[str, Any]:
+    """Aggregate one result JSONL file and write summary JSON."""
+
+    summary = aggregate_results_file(input_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return summary
+
+
 def aggregate_result_records(records: list[dict[str, Any]]) -> dict[str, Any]:
     n_trials = len(records)
     identity = _top_level_identity(records)
