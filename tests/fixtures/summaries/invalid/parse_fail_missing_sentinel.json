@@ -1,0 +1,39 @@
+{
+  "summary_version": "summary_v0",
+  "submitter_id": "local-user",
+  "run_id": "summary-fixture-run",
+  "dataset_id": "fixture_dataset",
+  "model_id": "fixture-model",
+  "n_trials": 1,
+  "content_pass_rate": 0.0,
+  "instruction_following_pass_rate": 0.0,
+  "item_format_pass_rate": 0.0,
+  "strict_pass_rate": 0.0,
+  "parse_fail_rate": 1.0,
+  "groups": [
+    {
+      "probe_id": "fixture_probe",
+      "variant_id": "fixture_probe.en",
+      "language": "en",
+      "item_id": "fixture_item_1",
+      "blank_id": "blank_1",
+      "prompt_template_id": "fill_full_sentence_v1.en",
+      "prompt_language": "en",
+      "support_mode": "zero",
+      "f_shot": 0,
+      "blank_rendering": "(___)",
+      "extraction_mode": "segment",
+      "n_trials": 1,
+      "fill_distribution": [
+        {
+          "extracted_fill": null,
+          "fill_key": "not_parse_fail_sentinel",
+          "count": 1,
+          "rate": 1.0,
+          "fill_class": "parse_fail"
+        }
+      ],
+      "unique_fill_count": 1
+    }
+  ]
+}
