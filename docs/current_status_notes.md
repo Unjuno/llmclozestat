@@ -2,7 +2,7 @@
 
 This note records implementation status changes that should be folded back into `docs/status_matrix.md` when the next status-matrix cleanup is performed.
 
-As of the latest sync, the summary, environment, manifest, and prepare-submission implementation notes have already been reflected in `docs/status_matrix.md`. Keep this file short and delete sections once they become redundant.
+As of the latest sync, the summary, environment, manifest, submission semantic identity, and prepare-submission implementation notes have already been reflected in `docs/status_matrix.md`. Keep this file short and delete sections once they become redundant.
 
 ## Newly implemented CLI surface
 
@@ -29,6 +29,8 @@ local manifest integrity verification helper
 prepare-submission package helper
 source artifact validation before packaging
 submission path identity checker
+submission artifact manifest-inclusion checker
+submission semantic identity checker
 ```
 
 ## Environment validation scope
@@ -48,7 +50,6 @@ Current limitations:
 
 ```text
 not a full JSON Schema validator
-no environment/result/summary identity cross-check
 no generation_config_hash recomputation
 ```
 
@@ -96,11 +97,10 @@ Current limitations:
 
 ```text
 not a full JSON Schema validator
-no source run.jsonl cross-check
-no summary identity cross-check against environment.json
+no source run.jsonl regenerated-summary cross-check
 ```
 
-## Manifest validation and integrity scope
+## Manifest, submission, and integrity scope
 
 Current scope:
 
@@ -115,13 +115,15 @@ canonical package_hash verification
 missing manifest detection for package directories
 submitter_id path identity check for submission packages
 run_id path identity check for submission packages
+required artifact manifest-inclusion check for environment.json/run.jsonl/summary.json
+required artifact existence check for environment.json/run.jsonl/summary.json
+semantic identity check across environment.json/run.jsonl/summary.json for submitter_id/run_id/dataset_id/model_id
 ```
 
 Current limitations:
 
 ```text
 not a full JSON Schema validator
-no environment/result/summary identity cross-check
 no regenerated-summary cross-check
 no signature or ledger verification
 ```
@@ -148,7 +150,7 @@ Current limitations:
 ```text
 does not run model execution
 does not aggregate run.jsonl
-does not perform semantic identity cross-checks
+does not regenerate summary.json from run.jsonl
 ```
 
 ## Current executable pipeline
