@@ -47,6 +47,7 @@ file SHA-256 helper
 canonical package hash helper
 local manifest integrity verification helper
 prepare-submission package helper
+submission path identity checker
 ```
 
 The current executable pipeline is:
@@ -81,14 +82,14 @@ Most command-level behavior beyond item/result/summary/manifest validation, sing
 | `validate items` | partially implemented | Validates JSONL parse, required/minItems-like item fields, selected cross-field checks, duplicate item/variant IDs | Not a complete JSON Schema validator |
 | `validate results` | partially implemented | Validates JSONL parse, required result fields, condition fields, and selected scoring consistency rules | Not a complete JSON Schema validator |
 | `validate summary` | partially implemented | Validates summary JSON parse, required fields, fill distribution shape, count/rate totals, and parse-fail sentinel consistency | Not a complete JSON Schema validator; no source run/environment cross-check |
-| `prepare-submission` | partially implemented | Copies existing environment/run/summary artifacts into a package directory and writes a verifiable manifest | Does not run aggregation, validate source files, perform identity cross-checks, or create reports |
-| `validate manifest` | partially implemented | Validates manifest JSON shape and can optionally verify listed file SHA-256 values plus package_hash | Not a complete JSON Schema validator; no submitter/run path identity check |
-| `validate submission` | partially implemented | Validates local package manifest and verifies listed file hashes plus package_hash | No regenerated-summary cross-check, no path identity check, no semantic cross-file validation |
+| `prepare-submission` | partially implemented | Copies existing environment/run/summary artifacts into a package directory, writes a manifest, and verifies the package | Does not run aggregation, validate source files, perform semantic identity cross-checks, or create reports |
+| `validate manifest` | partially implemented | Validates manifest JSON shape and can optionally verify listed file SHA-256 values plus package_hash | Not a complete JSON Schema validator; standalone manifest validation does not check package path identity unless validating a submission package |
+| `validate submission` | partially implemented | Validates local package manifest, checks submitter/run path identity, and verifies listed file hashes plus package_hash | No regenerated-summary cross-check and no semantic environment/result/summary validation |
 | `validate model` | specified | `model.toml` validation design exists | No implementation |
 | `validate model-repo` | specified | one-model repository invariant is defined | No implementation |
 | `run` | specified | CLI shape and runner constraints exist | No implementation |
 | `aggregate` | partially implemented | Reads one result JSONL and writes one single-run `summary.json` | No sharded input, multi-run aggregation, summary.md generation, report generation, or manifest writing |
-| `verify-integrity` | partially implemented | Verifies local `manifest.json`, listed file hashes, and canonical package_hash inside one package directory | No regenerated-summary cross-check, no path identity check, no signature or ledger support |
+| `verify-integrity` | partially implemented | Verifies local `manifest.json`, submitter/run path identity, listed file hashes, and canonical package_hash inside one package directory | No regenerated-summary cross-check, no signature or ledger support |
 | `report` | specified | report output role is defined | No implementation |
 | `collect` | specified | convenience command policy exists | No implementation |
 
@@ -257,13 +258,14 @@ each listed file exists inside the package directory
 each listed file is a regular file
 each listed file SHA-256 matches raw file bytes
 package_hash matches the canonical v0 package hash calculation
+submitter_id matches the parent directory name for submission-package validation
+run_id matches the package directory name for submission-package validation
 ```
 
 Current manifest/integrity limitations:
 
 ```text
 not a complete JSON Schema validator
-no submitter_id/run_id path identity check
 no environment/result/summary identity cross-check
 no regenerated-summary cross-check
 no signature verification
@@ -274,6 +276,8 @@ Current manifest validation tests cover:
 
 ```text
 valid temporary package manifest passes file verification
+submission path identity passes when parent/run directory match
+submission path identity mismatch fails
 wrong listed file hash fails
 wrong package_hash fails when file hashes match
 path traversal fails
@@ -302,7 +306,6 @@ Current prepare-submission limitations:
 ```text
 does not run or validate aggregate before packaging
 does not validate source environment/run/summary artifacts before copy
-does not check submitter_id/run_id against output path
 does not check environment/result/summary identity consistency
 does not regenerate summary.json from run.jsonl
 does not produce report files
@@ -352,7 +355,7 @@ can skip manifest writing for scratch use
 |---|---|---|
 | Full `schemas/manifest.schema.json` validation | partially implemented | Current validator is schema-like, not full JSON Schema |
 | Manifest generation | partially implemented | Implemented through `prepare-submission`, but no standalone `write-manifest` command |
-| `submitter_id` / `run_id` path identity check | specified | Not implemented |
+| `submitter_id` / `run_id` path identity check | partially implemented | Implemented for `validate submission` and `verify-integrity`; not applied to standalone `validate manifest` |
 | Cross-file environment/result/summary consistency | specified | Not implemented |
 | Regenerate summary from run file and compare | specified | Not implemented |
 | Signature / ledger optional artifacts | deferred | Not part of v0 core |
@@ -434,10 +437,10 @@ missing required metadata raises an error
 
 | Area | Status | Defined behavior | Gap |
 |---|---|---|---|
-| local submission packaging | partially implemented | create local package from existing artifacts | No source validation or identity cross-check |
+| local submission packaging | partially implemented | create local package from existing artifacts | No source validation or semantic identity cross-check |
 | one model repository rule | specified | one repo = one model identity | No validator |
 | `model.toml` | specified | schema exists | No TOML validation implementation |
-| submitter identity | specified | lowercase GitHub username slug for normal PRs | No CI enforcement implementation |
+| submitter identity | partially implemented | manifest must match local submission package path | No PR-author enforcement implementation |
 | run ID | specified | dataset + UTC timestamp + random suffix | No generator implementation |
 | result PR scope | specified | one new submission package only | No CI path classifier implementation |
 | PR author check | specified | submitter_id should match PR author for normal public PR | No CI implementation |
@@ -447,15 +450,15 @@ missing required metadata raises an error
 
 | Area | Status | Current state | Gap |
 |---|---|---|---|
-| unit test workflow | implemented | `.github/workflows/ci.yml` runs unittest | Recheck after latest prepare-submission changes |
+| unit test workflow | implemented | `.github/workflows/ci.yml` runs unittest | Recheck after latest prepare-submission and path-identity changes |
 | item fixture regression | implemented | unittest checks valid/invalid item fixtures | No full schema validator test |
 | parser fixture regression | implemented | unittest checks parser fixtures against pure parser/scorer output | No result schema validation yet |
 | result-record assembly regression | implemented | unittest checks required fields, preserved parser output, and missing metadata error | No result schema execution test yet |
 | result validation regression | implemented | unittest checks valid/invalid result fixtures and expected codes | No full JSON Schema validation yet |
 | summary aggregation regression | implemented | unittest checks repeated fills, rates, sentinel parse failures, entropy, and top fill fields | Single-run fixture only |
 | summary validation regression | implemented | unittest checks valid/invalid summary fixtures and expected codes | No full JSON Schema validation or source cross-check |
-| manifest validation regression | implemented | unittest checks valid package verification, wrong file hash, wrong package hash, path traversal, and missing manifest | No full JSON Schema validation or cross-file semantic check |
-| prepare-submission regression | implemented | unittest checks package copy, manifest verification, non-empty output rejection, and manifest skip mode | No source validation or identity cross-check |
+| manifest validation regression | implemented | unittest checks valid package verification, wrong file hash, wrong package hash, path traversal, missing manifest, and submission path identity | No full JSON Schema validation or cross-file semantic check |
+| prepare-submission regression | implemented | unittest checks package copy, manifest verification, non-empty output rejection, and manifest skip mode | No source validation or semantic identity cross-check |
 | expected error-code registry regression | implemented | unittest checks fixture expected codes are registered in docs/error_codes.md | Applies to item, result, and summary fixtures; manifest tests use direct assertions |
 | validation output contract regression | partially implemented | Tests check `status/errors/warnings/info` shape without JSON Schema execution | No schema execution test yet |
 | changed-path PR classification | specified | CI policy defines it | No implementation |
