@@ -8,6 +8,7 @@ import typer
 from llmclozestat.aggregation import write_summary_file
 from llmclozestat.item_validation import validate_items_file
 from llmclozestat.result_validation import validate_results_file
+from llmclozestat.summary_validation import validate_summary_file
 
 app = typer.Typer(help="Cloze-based statistical profiling for LLM outputs.")
 validate_app = typer.Typer(help="Validate datasets, results, summaries, manifests, and submissions.")
