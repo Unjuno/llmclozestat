@@ -26,8 +26,8 @@ Currently implemented CLI commands:
 - `validate summary` minimal summary JSON validation
 - `prepare-submission` minimal source validation, artifact copy, and manifest writing
 - `validate manifest` minimal manifest JSON validation with optional file/package hash verification
-- `validate submission` minimal local submission package integrity validation
-- `verify-integrity` minimal local submission package integrity verification
+- `validate submission` minimal local submission package integrity and semantic identity validation
+- `verify-integrity` minimal local submission package integrity and semantic identity verification
 
 Currently implemented library core:
 
@@ -39,6 +39,7 @@ Currently implemented library core:
 - manifest JSON validation helper
 - file SHA-256 and canonical package hash verification helper
 - prepare-submission package helper with source artifact validation
+- submission semantic identity checker for `environment.json`, `run.jsonl`, and `summary.json`
 
 Still design targets:
 
@@ -102,7 +103,7 @@ The repository currently contains:
 - minimal `validate summary` command;
 - minimal `prepare-submission` command with source artifact validation;
 - minimal `validate manifest` command;
-- minimal `validate submission` command;
+- minimal `validate submission` command with manifest, hash, path, and semantic identity checks;
 - minimal `verify-integrity` command;
 - strict-v0 parser/scorer core;
 - result-record assembly helper;
@@ -170,6 +171,8 @@ llmclozestat verify-integrity --path submissions/local-user/smoke-v0-local-run
 ```
 
 `prepare-submission` validates the source `environment.json`, `run.jsonl`, and `summary.json` before copying them by default. Use `--no-validate-sources` only for scratch/debug packaging, not for publishable submissions.
+
+`validate submission` and `verify-integrity` require `environment.json`, `run.jsonl`, and `summary.json` to be listed in `manifest.json`, verify their file hashes, and check that `submitter_id`, `run_id`, `dataset_id`, and `model_id` agree across the three artifacts.
 
 ## What this is not
 
