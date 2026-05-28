@@ -144,3 +144,20 @@ def validate_manifest(
     typer.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
     if result.failed:
         raise typer.Exit(code=1)
+
+
+@validate_app.command("submission")
+def validate_submission(
+    path: Path = typer.Option(
+        ...,
+        "--path",
+        exists=False,
+        file_okay=False,
+        dir_okay=True,
+        help="Path to a submission package directory containing manifest.json.",
+    ),
+) -> None:
+    result = validate_submission_manifest(path)
+    typer.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
+    if result.failed:
+        raise typer.Exit(code=1)
