@@ -65,6 +65,62 @@ extraction_mode
 generation_config_hash
 ```
 
+## Compression policy
+
+Normal statistical values should be compressed into aggregate counts, rates, and compact distributions.
+
+For example:
+
+```text
+count
+rate
+unique_fill_count
+top_fill
+top_wrong_fill
+mean_entropy
+avg_latency_ms
+```
+
+Do not retain every successful ordinary trial in derived report artifacts when the same information can be reconstructed from aggregate statistics or from the raw run file.
+
+`summary.json` is a compressed materialized view of one run. It is not the raw event log.
+
+## Failure and exception retention policy
+
+Failures are exceptions and should be preserved more carefully than ordinary successful trials.
+
+Examples:
+
+```text
+parse_fail examples
+instruction-following failures
+item-format failures
+validator failures
+unexpected extraction ambiguity
+unexpected backend errors
+```
+
+These examples have diagnostic value and may reveal systematic model or parser behavior.
+
+However, publishable `summary.json` should not become an unbounded dump of every failure. Prefer a compact design such as:
+
+```text
+failure_count
+failure_rate
+failure_distribution
+sample_failure_examples with a small cap
+```
+
+A later diagnostics artifact may retain richer examples outside `summary.json`, for example:
+
+```text
+results/<run_id>/failed/
+results/<run_id>/notes.md
+reports/failure_examples.jsonl
+```
+
+This preserves failure evidence without exploding the canonical summary artifact.
+
 ## What does not belong in summary.json
 
 Do not use `summary.json` for:
@@ -75,6 +131,7 @@ cross-submitter aggregation
 cross-model comparison
 leaderboard tables
 repository-wide reports
+unbounded raw failure dumps
 ```
 
 Those should be separate artifacts, for example:
@@ -84,6 +141,7 @@ reports/run_index.csv
 reports/blank_fills.csv
 reports/model_comparison.csv
 reports/aggregate_summary.json
+reports/failure_examples.jsonl
 ```
 
 ## Reason
@@ -100,6 +158,8 @@ dataset_id
 ```
 
 A cross-run report may contain many of each. Forcing both into one schema would make identity and grouping rules ambiguous.
+
+The same applies to storage density. Ordinary statistics can be compressed, but failures are sparse, high-information exceptions. They should be retained as capped examples or diagnostics rather than merged into opaque aggregate numbers only.
 
 ## Current command mapping
 
