@@ -5,6 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
+from llmclozestat.aggregation import aggregate_result_records
 from llmclozestat.manifest_validation import (
     compute_package_hash,
     sha256_file,
@@ -52,6 +53,7 @@ class ManifestValidationTests(unittest.TestCase):
 
             result = validate_submission_manifest(package_dir)
             self.assertFalse(result.failed, result.to_dict())
+            self.assertIn("summary_regeneration_checked", {info["code"] for info in result.info})
 
     def test_submission_path_identity_mismatch_fails(self) -> None:
         with TemporaryDirectory() as temp_dir:
@@ -92,6 +94,27 @@ class ManifestValidationTests(unittest.TestCase):
             result = validate_submission_manifest(package_dir)
             self.assertTrue(result.failed, result.to_dict())
             self.assertIn("submission_identity_mismatch", {error.code for error in result.errors})
+
+    def test_submission_summary_regeneration_mismatch_fails_with_matching_hashes(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            package_dir = Path(temp_dir) / "submissions" / "local-user" / "fixture-run"
+            package_dir.mkdir(parents=True)
+            _write_identity_artifacts(package_dir)
+            summary = json.loads((package_dir / "summary.json").read_text(encoding="utf-8"))
+            summary["n_trials"] = 999
+            (package_dir / "summary.json").write_text(json.dumps(summary) + "\n", encoding="utf-8")
+
+            manifest = _build_manifest(
+                package_dir=package_dir,
+                submitter_id="local-user",
+                run_id="fixture-run",
+                paths=["environment.json", "run.jsonl", "summary.json"],
+            )
+            (package_dir / "manifest.json").write_text(json.dumps(manifest) + "\n", encoding="utf-8")
+
+            result = validate_submission_manifest(package_dir)
+            self.assertTrue(result.failed, result.to_dict())
+            self.assertIn("summary_regeneration_mismatch", {error.code for error in result.errors})
 
     def test_missing_required_submission_artifact_fails(self) -> None:
         with TemporaryDirectory() as temp_dir:
@@ -192,23 +215,45 @@ def _write_identity_artifacts(package_dir: Path) -> None:
         "dataset_id": "fixture_dataset",
         "model_id": "fixture-model",
     }
-    run_record = {
-        "submitter_id": "local-user",
-        "run_id": "fixture-run",
-        "dataset_id": "fixture_dataset",
-        "model_id": "fixture-model",
-        "trial_id": 1,
-    }
-    summary = {
-        "summary_version": "summary_v0",
-        "submitter_id": "local-user",
-        "run_id": "fixture-run",
-        "dataset_id": "fixture_dataset",
-        "model_id": "fixture-model",
-    }
+    run_record = _build_result_record()
+    summary = aggregate_result_records([run_record])
     (package_dir / "environment.json").write_text(json.dumps(environment) + "\n", encoding="utf-8")
     (package_dir / "run.jsonl").write_text(json.dumps(run_record) + "\n", encoding="utf-8")
     (package_dir / "summary.json").write_text(json.dumps(summary) + "\n", encoding="utf-8")
+
+
+def _build_result_record() -> dict[str, object]:
+    return {
+        "submitter_id": "local-user",
+        "run_id": "fixture-run",
+        "dataset_id": "fixture_dataset",
+        "model_id": "fixture-model",
+        "probe_id": "probe-1",
+        "variant_id": "variant-1",
+        "language": "ja",
+        "item_id": "item-1",
+        "prompt_template_id": "strict-v0-ja",
+        "prompt_language": "ja",
+        "support_mode": "zero",
+        "f_shot": 0,
+        "blank_rendering": "placeholder",
+        "extraction_mode": "segment",
+        "generation_config_hash": "sha256:" + "1" * 64,
+        "instruction_following_pass": True,
+        "item_format_pass": True,
+        "item_strict_pass": True,
+        "latency_ms": 10.0,
+        "blank_results": [
+            {
+                "blank_id": "b1",
+                "position": 1,
+                "extracted_fill": "青",
+                "fill_class": "accepted",
+                "content_pass": True,
+                "parse_fail": False,
+            }
+        ],
+    }
 
 
 def _build_manifest(
