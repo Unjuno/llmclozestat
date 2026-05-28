@@ -143,6 +143,12 @@ These are the first implementation target.
 | `missing_condition_field` | ERROR | Required prompt/parser/generation condition field is missing |
 | `duplicate_result_identity` | ERROR | Two result records have the same result identity tuple |
 
+## Environment validation codes
+
+| Code | Severity | Meaning |
+|---|---:|---|
+| `environment_schema_validation_error` | ERROR | `environment.json` does not match the current environment schema-like validator |
+
 ## Summary validation codes
 
 | Code | Severity | Meaning |
