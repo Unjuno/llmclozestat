@@ -76,18 +76,8 @@ def validate_manifest_file(
     """
 
     result = ManifestValidationResult()
-    if not input_path.exists():
-        result.add_error("file_not_found", "Manifest file does not exist", str(input_path))
-        return result
-
-    try:
-        manifest = json.loads(input_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        result.add_error("json_parse_error", f"Invalid manifest JSON: {exc.msg}", str(input_path))
-        return result
-
-    if not isinstance(manifest, dict):
-        result.add_error("manifest_schema_validation_error", "Manifest JSON must be an object", str(input_path))
+    manifest = _load_manifest(input_path, result)
+    if manifest is None:
         return result
 
     validate_manifest_object(manifest, str(input_path), result)
@@ -107,11 +97,21 @@ def validate_submission_manifest(package_dir: Path) -> ManifestValidationResult:
     """Validate and verify package_dir/manifest.json."""
 
     manifest_path = package_dir / "manifest.json"
+    result = ManifestValidationResult()
     if not manifest_path.exists():
-        result = ManifestValidationResult()
         result.add_error("missing_manifest", "Submission package has no manifest.json", str(manifest_path))
         return result
-    return validate_manifest_file(manifest_path, package_dir=package_dir, verify_files=True)
+
+    manifest = _load_manifest(manifest_path, result)
+    if manifest is None:
+        return result
+
+    validate_manifest_object(manifest, str(manifest_path), result)
+    if not result.failed:
+        _validate_submission_path_identity(manifest, package_dir, str(manifest_path), result)
+    if not result.failed:
+        verify_manifest_integrity(manifest, package_dir, str(manifest_path), result)
+    return result
 
 
 def validate_manifest_object(
@@ -237,6 +237,49 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _load_manifest(input_path: Path, result: ManifestValidationResult) -> dict[str, Any] | None:
+    if not input_path.exists():
+        result.add_error("file_not_found", "Manifest file does not exist", str(input_path))
+        return None
+
+    try:
+        manifest = json.loads(input_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        result.add_error("json_parse_error", f"Invalid manifest JSON: {exc.msg}", str(input_path))
+        return None
+
+    if not isinstance(manifest, dict):
+        result.add_error("manifest_schema_validation_error", "Manifest JSON must be an object", str(input_path))
+        return None
+    return manifest
+
+
+def _validate_submission_path_identity(
+    manifest: dict[str, Any],
+    package_dir: Path,
+    path: str,
+    result: ManifestValidationResult,
+) -> None:
+    expected_run_id = package_dir.name
+    expected_submitter_id = package_dir.parent.name
+
+    actual_run_id = manifest.get("run_id")
+    actual_submitter_id = manifest.get("submitter_id")
+
+    if isinstance(actual_run_id, str) and actual_run_id != expected_run_id:
+        result.add_error(
+            "run_id_path_mismatch",
+            f"manifest run_id {actual_run_id!r} does not match package directory name {expected_run_id!r}",
+            path,
+        )
+    if isinstance(actual_submitter_id, str) and actual_submitter_id != expected_submitter_id:
+        result.add_error(
+            "submitter_id_path_mismatch",
+            f"manifest submitter_id {actual_submitter_id!r} does not match parent directory name {expected_submitter_id!r}",
+            path,
+        )
 
 
 def _validate_file_entry(
