@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
+
+from llmclozestat.aggregation import aggregate_result_records
 
 
 PACKAGE_HASH_INPUT_DESCRIPTION = (
@@ -27,6 +30,41 @@ REQUIRED_MANIFEST_FIELDS = {
 REQUIRED_FILE_FIELDS = {"path", "sha256"}
 REQUIRED_SUBMISSION_ARTIFACTS = {"environment.json", "run.jsonl", "summary.json"}
 IDENTITY_FIELDS = ("submitter_id", "run_id", "dataset_id", "model_id")
+SUMMARY_TOP_LEVEL_COMPARE_FIELDS = (
+    "summary_version",
+    "submitter_id",
+    "run_id",
+    "dataset_id",
+    "model_id",
+    "n_trials",
+    "content_pass_rate",
+    "instruction_following_pass_rate",
+    "item_format_pass_rate",
+    "strict_pass_rate",
+    "parse_fail_rate",
+    "avg_latency_ms",
+)
+GROUP_COMPARE_FIELDS = (
+    "probe_id",
+    "variant_id",
+    "language",
+    "item_id",
+    "blank_id",
+    "position",
+    "prompt_template_id",
+    "prompt_language",
+    "support_mode",
+    "f_shot",
+    "blank_rendering",
+    "extraction_mode",
+    "generation_config_hash",
+    "n_trials",
+    "unique_fill_count",
+    "top_fill",
+    "top_wrong_fill",
+    "mean_entropy",
+)
+FLOAT_ABS_TOLERANCE = 1e-12
 
 
 @dataclass(frozen=True)
@@ -116,7 +154,7 @@ def validate_submission_manifest(package_dir: Path) -> ManifestValidationResult:
     if not result.failed:
         verify_manifest_integrity(manifest, package_dir, str(manifest_path), result)
     if not result.failed:
-        _validate_submission_artifact_identity(package_dir, str(manifest_path), result)
+        _validate_submission_artifacts(package_dir, str(manifest_path), result)
     return result
 
 
@@ -309,7 +347,7 @@ def _validate_submission_manifest_includes_required_artifacts(
         )
 
 
-def _validate_submission_artifact_identity(
+def _validate_submission_artifacts(
     package_dir: Path,
     path: str,
     result: ManifestValidationResult,
@@ -331,6 +369,18 @@ def _validate_submission_artifact_identity(
         result.add_error("empty_blank_results", "run.jsonl has no result records", str(package_dir / "run.jsonl"))
         return
 
+    _validate_submission_artifact_identity(package_dir, environment, summary, run_records, result)
+    if not result.failed:
+        _validate_submission_summary_regeneration(package_dir, summary, run_records, result)
+
+
+def _validate_submission_artifact_identity(
+    package_dir: Path,
+    environment: dict[str, Any],
+    summary: dict[str, Any],
+    run_records: list[dict[str, Any]],
+    result: ManifestValidationResult,
+) -> None:
     for field in IDENTITY_FIELDS:
         expected = environment.get(field)
         summary_value = summary.get(field)
@@ -350,6 +400,81 @@ def _validate_submission_artifact_identity(
                 )
 
     result.info.append({"code": "submission_identity_checked", "message": f"Checked {len(run_records)} result record identity/identities"})
+
+
+def _validate_submission_summary_regeneration(
+    package_dir: Path,
+    summary: dict[str, Any],
+    run_records: list[dict[str, Any]],
+    result: ManifestValidationResult,
+) -> None:
+    expected_summary = aggregate_result_records(run_records)
+    mismatches: list[str] = []
+
+    for field in SUMMARY_TOP_LEVEL_COMPARE_FIELDS:
+        if not _values_equal(summary.get(field), expected_summary.get(field)):
+            mismatches.append(f"{field}: actual={summary.get(field)!r} expected={expected_summary.get(field)!r}")
+
+    actual_groups = _canonical_summary_groups(summary.get("groups"))
+    expected_groups = _canonical_summary_groups(expected_summary.get("groups"))
+    if actual_groups != expected_groups:
+        mismatches.append("groups: actual groups/fill_distribution do not match regenerated summary")
+
+    if mismatches:
+        result.add_error(
+            "summary_regeneration_mismatch",
+            "; ".join(mismatches[:5]),
+            str(package_dir / "summary.json"),
+        )
+    else:
+        result.info.append({"code": "summary_regeneration_checked", "message": "summary.json matches regenerated summary from run.jsonl"})
+
+
+def _canonical_summary_groups(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+
+    canonical_groups: list[dict[str, Any]] = []
+    for group in value:
+        if not isinstance(group, dict):
+            continue
+        canonical_group = {field: _normalize_float(group.get(field)) for field in GROUP_COMPARE_FIELDS}
+        fill_distribution = group.get("fill_distribution")
+        canonical_group["fill_distribution"] = _canonical_fill_distribution(fill_distribution)
+        canonical_groups.append(canonical_group)
+
+    return sorted(canonical_groups, key=lambda group: json.dumps(group, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+
+
+def _canonical_fill_distribution(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    entries: list[dict[str, Any]] = []
+    for entry in value:
+        if not isinstance(entry, dict):
+            continue
+        entries.append(
+            {
+                "extracted_fill": entry.get("extracted_fill"),
+                "fill_key": entry.get("fill_key"),
+                "count": entry.get("count"),
+                "rate": _normalize_float(entry.get("rate")),
+                "fill_class": entry.get("fill_class"),
+            }
+        )
+    return sorted(entries, key=lambda entry: json.dumps(entry, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+
+
+def _values_equal(actual: Any, expected: Any) -> bool:
+    if isinstance(actual, (int, float)) and isinstance(expected, (int, float)):
+        return math.isclose(float(actual), float(expected), rel_tol=0.0, abs_tol=FLOAT_ABS_TOLERANCE)
+    return actual == expected
+
+
+def _normalize_float(value: Any) -> Any:
+    if isinstance(value, (int, float)):
+        return round(float(value), 12)
+    return value
 
 
 def _load_json_object(
