@@ -25,6 +25,8 @@ Implemented CLI surface:
 llmclozestat version
 llmclozestat validate items --dataset <items.jsonl>
 llmclozestat validate results --input <run.jsonl>
+llmclozestat aggregate --input <run.jsonl> --out <summary.json>
+llmclozestat validate summary --input <summary.json>
 ```
 
 Implemented library core:
@@ -34,9 +36,20 @@ item JSONL validation core
 strict-v0 parser/scorer pure function core
 result-record assembly helper
 result JSONL validation core
+summary aggregation helper
+summary JSON validation core
 ```
 
-Most command-level behavior beyond item/result validation is still specified but not implemented.
+The current executable pipeline is:
+
+```text
+run.jsonl
+  -> validate results
+  -> aggregate summary.json
+  -> validate summary
+```
+
+Most command-level behavior beyond item/result/summary validation and single-run aggregation is still specified but not implemented.
 
 ## Status terms
 
@@ -56,13 +69,13 @@ Most command-level behavior beyond item/result validation is still specified but
 | `version` | implemented | Prints package version | None for v0 |
 | `validate items` | partially implemented | Validates JSONL parse, required/minItems-like item fields, selected cross-field checks, duplicate item/variant IDs | Not a complete JSON Schema validator |
 | `validate results` | partially implemented | Validates JSONL parse, required result fields, condition fields, and selected scoring consistency rules | Not a complete JSON Schema validator |
-| `validate summary` | specified | Summary validation design exists | No implementation |
+| `validate summary` | partially implemented | Validates summary JSON parse, required fields, fill distribution shape, count/rate totals, and parse-fail sentinel consistency | Not a complete JSON Schema validator; no source run/environment cross-check |
 | `validate manifest` | specified | Manifest validation design exists | No implementation |
 | `validate submission` | specified | Submission validation design exists | No implementation |
 | `validate model` | specified | `model.toml` validation design exists | No implementation |
 | `validate model-repo` | specified | one-model repository invariant is defined | No implementation |
 | `run` | specified | CLI shape and runner constraints exist | No implementation |
-| `aggregate` | specified | grouping keys and summary shape exists | No implementation |
+| `aggregate` | partially implemented | Reads one result JSONL and writes one single-run `summary.json` | No sharded input, multi-run aggregation, summary.md generation, report generation, or manifest writing |
 | `prepare-submission` | specified | package layout and manifest requirement exist | No implementation |
 | `verify-integrity` | specified | canonical package hash is defined | No implementation |
 | `report` | specified | report output role is defined | No implementation |
@@ -139,6 +152,79 @@ result fixture expected codes are registered in docs/error_codes.md
 validation output contract shape for pass/fail
 ```
 
+## Implemented summary aggregation scope
+
+`aggregate` currently supports:
+
+```text
+one result JSONL input
+one summary JSON output
+overall content/instruction/format/strict/parse-fail rates
+average latency over numeric latency_ms values
+one or more blank-level groups
+array-form fill_distribution
+repeated fills counted without deduplication
+parse failures represented with fill_key = __PARSE_FAIL__
+Shannon entropy over fill counts
+```
+
+Current aggregation limitations:
+
+```text
+no sharded input
+no multi-run aggregation
+no exclusion filters
+no summary.md generation
+no report generation
+no manifest writing
+no source run.jsonl validation before aggregation
+```
+
+Current aggregation tests cover:
+
+```text
+repeated fills are counted without deduplication
+overall pass/fail/parse-fail/latency rates are computed
+blank group fill_distribution counts and rates are computed
+parse failures use the sentinel fill key
+entropy and top-fill fields are computed for fixture data
+```
+
+## Implemented summary validation scope
+
+`validate summary` currently checks:
+
+```text
+file existence
+summary JSON parseability
+summary JSON is an object
+selected top-level required fields
+groups is a non-empty array
+selected group required fields
+fill_distribution is an array, not an object
+selected fill_distribution required fields
+fill_distribution count total equals group n_trials
+fill_distribution rate total equals 1.0
+parse_fail entries use extracted_fill null and fill_key __PARSE_FAIL__
+```
+
+Current summary validation limitations:
+
+```text
+not a complete JSON Schema validator
+no source run.jsonl cross-check
+no environment.json identity cross-check
+no manifest/package cross-check
+```
+
+Current summary validation tests cover:
+
+```text
+valid summary fixtures pass
+invalid summary fixtures fail with expected metadata codes
+summary fixture expected codes are registered in docs/error_codes.md
+```
+
 ## Defined but not fully implemented in item validation
 
 | Requirement | Status | Notes |
@@ -160,6 +246,15 @@ validation output contract shape for pass/fail
 | Sharded run JSONL validation | specified | Not implemented |
 | Cross-file environment/result/summary consistency | specified | Not implemented |
 
+## Defined but not fully implemented in summary validation
+
+| Requirement | Status | Notes |
+|---|---|---|
+| Full `schemas/summary.schema.json` validation | partially implemented | Current validator is schema-like, not full JSON Schema |
+| Source `run.jsonl` identity and rate cross-check | specified | Not implemented |
+| `environment.json` identity cross-check | specified | Not implemented |
+| Summary artifact/package validation | specified | Not implemented; belongs to submission or manifest validation |
+
 ## Data and schema status
 
 | Area | Status | Current state | Gap |
@@ -167,12 +262,12 @@ validation output contract shape for pass/fail
 | Item schema | specified | `schemas/item.schema.json` exists | Full runtime validation not implemented |
 | Result schema | partially implemented | `schemas/result.schema.json` exists and includes `known_wrong` fill class | Full runtime schema validation not implemented |
 | Environment schema | specified | `schemas/environment.schema.json` exists | No environment validator |
-| Summary schema | specified | `schemas/summary.schema.json` exists | No summary validator/regenerator |
+| Summary schema | partially implemented | `schemas/summary.schema.json` exists; summary aggregation and validation cores exist | Full runtime schema validation and source cross-check not implemented |
 | Manifest schema | specified | `schemas/manifest.schema.json` | No manifest validator/verifier |
 | Model schema | specified | `schemas/model.schema.json` exists | No TOML parser/validator |
 | Validation output schema | specified | `schemas/validation_output.schema.json` exists | No JSON Schema execution test yet |
 | smoke dataset | implemented as data | `datasets/smoke_v0/items.jsonl` exists and is covered by tests | Only one item; not broad evaluation data |
-| reference example package | specified fixture | `examples/smoke_v0` exists | Not verified by implemented manifest/summary code |
+| reference example package | specified fixture | `examples/smoke_v0` exists | Not verified by implemented manifest code |
 | model repository skeleton | specified template | `examples/model_repository` exists | No copier or scaffold command |
 
 ## Parser, scoring, and result-record status
@@ -188,7 +283,7 @@ validation output contract shape for pass/fail
 | strict-pass formula | partially implemented | `instruction_following_pass and item_format_pass and all content_pass` | Implemented in pure function and result validator checks consistency |
 | result-record assembly | partially implemented | parser/scorer output plus run/model/prompt/generation metadata | Implemented as a pure helper; not yet JSONL writer or runner-integrated |
 | parser/scorer CLI surface | specified | future result generation should use parser/scorer | No run command or model backend integration |
-| repeated fill counting | specified | Do not deduplicate repeated fills | No aggregation implementation |
+| repeated fill counting | implemented | Do not deduplicate repeated fills | Implemented in single-run aggregation |
 
 Current parser/scorer tests cover:
 
@@ -214,10 +309,10 @@ missing required metadata raises an error
 
 | Area | Status | Defined behavior | Gap |
 |---|---|---|---|
-| summary shape | specified | array-form `fill_distribution` with `fill_key` | No generator/validator |
-| parse-fail sentinel | specified | `__PARSE_FAIL__` | No generator/validator |
-| grouping keys | specified | model/dataset/item/blank/prompt/parser/generation keys | No aggregator |
-| repeated fill counting | specified | count every occurrence | No aggregator |
+| summary shape | partially implemented | array-form `fill_distribution` with `fill_key` | Implemented for single-run summary JSON; no full schema execution or source cross-check |
+| parse-fail sentinel | implemented | `__PARSE_FAIL__` | Implemented in aggregation and summary validation |
+| grouping keys | partially implemented | model/dataset/item/blank/prompt/parser/generation keys | Implemented for single-run aggregation; no sharded or multi-run grouping |
+| repeated fill counting | implemented | Count every occurrence | Implemented and tested in aggregation |
 | report files | specified | `reports/run_index.csv`, `blank_fills.csv`, etc. | No report generator |
 | main CI report regeneration | specified | regenerate after merge | No implementation |
 
@@ -248,171 +343,15 @@ missing required metadata raises an error
 
 | Area | Status | Current state | Gap |
 |---|---|---|---|
-| unit test workflow | implemented | `.github/workflows/ci.yml` runs unittest | Recheck after latest result validation changes |
+| unit test workflow | implemented | `.github/workflows/ci.yml` runs unittest | Recheck after latest status-matrix sync |
 | item fixture regression | implemented | unittest checks valid/invalid item fixtures | No full schema validator test |
 | parser fixture regression | implemented | unittest checks parser fixtures against pure parser/scorer output | No result schema validation yet |
 | result-record assembly regression | implemented | unittest checks required fields, preserved parser output, and missing metadata error | No result schema execution test yet |
 | result validation regression | implemented | unittest checks valid/invalid result fixtures and expected codes | No full JSON Schema validation yet |
-| expected error-code registry regression | implemented | unittest checks fixture expected codes are registered in docs/error_codes.md | Applies to item and result fixtures |
+| summary aggregation regression | implemented | unittest checks repeated fills, rates, sentinel parse failures, entropy, and top fill fields | Single-run fixture only |
+| summary validation regression | implemented | unittest checks valid/invalid summary fixtures and expected codes | No full JSON Schema validation or source cross-check |
+| expected error-code registry regression | implemented | unittest checks fixture expected codes are registered in docs/error_codes.md | Applies to item, result, and summary fixtures |
 | validation output contract regression | partially implemented | Tests check `status/errors/warnings/info` shape without JSON Schema execution | No schema execution test yet |
 | changed-path PR classification | specified | CI policy defines it | No implementation |
 | result PR restrictions | specified | CI policy defines it | No implementation |
 | report regeneration on main | specified | CI policy defines it | No implementation |
-| manifest verification in CI | specified | CI policy defines it | No implementation |
-
-## Undefined or insufficiently defined areas
-
-These are not blockers for current `validate items`, `validate results`, pure parser/scorer fixtures, or result-record assembly, but they are blockers before later phases.
-
-### Provider contract
-
-Status: partially specified.
-
-Known need:
-
-```text
-openai-compatible chat endpoint request shape
-response text extraction path
-error handling
-retry policy
-timeout policy
-rate limit handling
-backend metadata fields
-```
-
-Until this is defined, `run` should not be implemented beyond a narrow local prototype.
-
-### Full JSON Schema execution strategy
-
-Status: partially specified.
-
-Open choice:
-
-```text
-add jsonschema dependency
-or keep a custom validator
-or use a CLI schema checker in CI only
-```
-
-Current validators are schema-like, not complete JSON Schema execution.
-
-### Normalization policy
-
-Status: partially specified.
-
-The parser/scorer core currently implements only strict v0 minimal normalization:
-
-```text
-CRLF/CR -> LF
-trim leading/trailing whitespace
-```
-
-Needs definition before broader parser/scorer expansion:
-
-```text
-Unicode normalization
-whitespace collapsing beyond edges
-Japanese punctuation handling
-case handling for English
-whether normalization differs for extraction vs classification
-```
-
-### Validation output schema execution
-
-Status: specified but not fully enforced.
-
-Current output contract has a schema:
-
-```text
-schemas/validation_output.schema.json
-```
-
-The CLI currently emits the required top-level fields:
-
-```text
-status/errors/warnings/info
-```
-
-But tests do not yet run a JSON Schema validator against this schema.
-
-### Resume / overwrite behavior
-
-Status: partially specified.
-
-Policy says publishable submissions should not be silently overwritten. Exact local scratch resume behavior is not yet defined.
-
-### Dataset contribution lifecycle
-
-Status: partially specified.
-
-Existing docs define item policy and validation, but not the full contributor workflow for adding new datasets or probes.
-
-Needs later:
-
-```text
-new dataset PR flow
-review checklist
-minimum metadata
-translation/equivalence review
-versioning policy
-```
-
-## Explicitly deferred areas
-
-These should not be implemented in the current phase:
-
-```text
-automatic repository creation
-automatic fork creation
-automatic PR creation
-long-running multi-process worker
-same-run parallel execution
-distributed task leasing
-model execution authentication
-execution attestation
-hosted web dashboard
-global leaderboard
-```
-
-## Current implementation boundary
-
-The current executable CLI boundary is:
-
-```text
-local CLI can validate item JSONL enough to protect the smoke dataset and item fixtures
-local CLI can validate result JSONL scoring consistency for initial v0 fixtures
-```
-
-The current library-core boundary is:
-
-```text
-strict-v0 parser/scorer can parse and score simple one-blank fixture outputs
-result-record helper can assemble parser/scorer output with required run metadata
-```
-
-The current non-executable design boundary is:
-
-```text
-run command
-summary generation
-manifest integrity
-model repository workflow
-submitter/run identity enforcement
-CI policy beyond unittest
-collection workflow
-```
-
-Do not present non-executable design boundaries as working CLI behavior.
-
-## Recommended next work
-
-Before expanding runner or collect, finish the next validation layer:
-
-```text
-1. Recheck GitHub Actions after validate results changes.
-2. Add summary aggregation fixtures.
-3. Implement minimal aggregate summary generation.
-4. Add validate summary after summary generation is fixture-backed.
-```
-
-Do not start model execution yet.
