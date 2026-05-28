@@ -6,12 +6,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from llmclozestat.environment_validation import validate_environment_file
 from llmclozestat.manifest_validation import (
     PACKAGE_HASH_INPUT_DESCRIPTION,
     compute_package_hash,
     sha256_file,
     validate_submission_manifest,
 )
+from llmclozestat.result_validation import validate_results_file
+from llmclozestat.summary_validation import validate_summary_file
 
 
 class PrepareSubmissionError(ValueError):
@@ -36,13 +39,14 @@ def prepare_submission_package(
     summary_md: Path | None = None,
     write_manifest: bool = True,
     overwrite: bool = False,
+    validate_sources: bool = True,
     created_at: str | None = None,
 ) -> dict[str, Any]:
     """Copy run artifacts into a submission package directory.
 
-    This function intentionally does not run a model, aggregate results, or validate
-    cross-file semantic identity. It only creates a local package from existing
-    artifacts and optionally writes a v0 manifest for package-level integrity.
+    This function intentionally does not run a model or aggregate results. By
+    default, it validates the existing environment/run/summary artifacts before
+    copying them, then optionally writes a v0 manifest for package-level integrity.
     """
 
     _require_non_empty("submitter_id", submitter_id)
@@ -52,6 +56,13 @@ def prepare_submission_package(
     _ensure_source_file("summary_json", summary_json)
     if summary_md is not None:
         _ensure_source_file("summary_md", summary_md)
+
+    if validate_sources:
+        _validate_source_artifacts(
+            environment_json=environment_json,
+            run_jsonl=run_jsonl,
+            summary_json=summary_json,
+        )
 
     if out_dir.exists() and any(out_dir.iterdir()) and not overwrite:
         raise PrepareSubmissionError(f"Output directory is not empty: {out_dir}")
@@ -85,6 +96,7 @@ def prepare_submission_package(
         "submission_path": str(out_dir),
         "file_count": len(copied_paths) + (1 if manifest_written else 0),
         "manifest_written": manifest_written,
+        "source_validation": "validated" if validate_sources else "skipped",
         "files": sorted([*copied_paths, *( ["manifest.json"] if manifest_written else [] )]),
     }
 
@@ -129,6 +141,25 @@ def build_manifest(
     }
     manifest["package_hash"] = compute_package_hash(manifest)
     return manifest
+
+
+def _validate_source_artifacts(
+    *,
+    environment_json: Path,
+    run_jsonl: Path,
+    summary_json: Path,
+) -> None:
+    environment_result = validate_environment_file(environment_json)
+    if environment_result.failed:
+        raise PrepareSubmissionError(f"environment_json failed validation: {environment_result.to_dict()}")
+
+    result_validation = validate_results_file(run_jsonl)
+    if result_validation.failed:
+        raise PrepareSubmissionError(f"run_jsonl failed validation: {result_validation.to_dict()}")
+
+    summary_validation = validate_summary_file(summary_json)
+    if summary_validation.failed:
+        raise PrepareSubmissionError(f"summary_json failed validation: {summary_validation.to_dict()}")
 
 
 def _copy_artifact(source: Path, destination: Path) -> Path:
