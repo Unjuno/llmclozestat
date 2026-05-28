@@ -25,6 +25,7 @@ file SHA-256 helper
 canonical package hash helper
 local manifest integrity verification helper
 prepare-submission package helper
+submission path identity checker
 ```
 
 ## Summary aggregation scope
@@ -88,13 +89,14 @@ manifest self-reference rejection
 listed file SHA-256 verification
 canonical package_hash verification
 missing manifest detection for package directories
+submitter_id path identity check for submission packages
+run_id path identity check for submission packages
 ```
 
 Current limitations:
 
 ```text
 not a full JSON Schema validator
-no submitter_id/run_id path identity check
 no environment/result/summary identity cross-check
 no regenerated-summary cross-check
 no signature or ledger verification
