@@ -166,6 +166,12 @@ These are the first implementation target.
 | `wrong_package_hash` | ERROR | Per-file hashes may match but `package_hash` is wrong |
 | `manifest_identity_mismatch` | ERROR | Manifest submitter/run fields do not match path or environment |
 
+## Prepare-submission codes
+
+| Code | Severity | Meaning |
+|---|---:|---|
+| `prepare_submission_error` | ERROR | Submission package preparation failed before producing a valid package |
+
 ## Model repository codes
 
 | Code | Severity | Meaning |
