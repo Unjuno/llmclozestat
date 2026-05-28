@@ -1,15 +1,6 @@
 # Status Matrix
 
-This document separates the current state of `llmclozestat` into:
-
-```text
-implemented
-specified but not implemented
-partially specified
-undefined or intentionally deferred
-```
-
-It is a working status document, not a roadmap promise.
+This document separates the current state of `llmclozestat` into implemented, partially implemented, specified, deferred, and undefined areas. It is a working status document, not a roadmap promise.
 
 ## Summary
 
@@ -51,6 +42,8 @@ local manifest integrity verification helper
 prepare-submission package helper
 source artifact validation before packaging
 submission path identity checker
+submission artifact manifest-inclusion checker
+submission semantic identity checker
 ```
 
 Current executable pipeline:
@@ -66,7 +59,7 @@ run.jsonl
   -> validate manifest / validate submission / verify-integrity
 ```
 
-Most command-level behavior beyond validation, single-run aggregation, local package preparation, and local file-hash verification is still specified but not implemented.
+Most command-level behavior beyond validation, single-run aggregation, local package preparation, local file-hash verification, and basic semantic identity checking is still specified but not implemented.
 
 ## Status terms
 
@@ -74,7 +67,7 @@ Most command-level behavior beyond validation, single-run aggregation, local pac
 |---|---|
 | `implemented` | Code exists and is covered by tests or direct CLI surface |
 | `partially implemented` | Some code exists, but it does not cover the full documented contract |
-| `specified` | Documentation/schema/fixtures define the intended behavior, but no implementation exists |
+| `specified` | Documentation/schema/fixtures define intended behavior, but no implementation exists |
 | `partially specified` | Some design exists, but important choices remain open |
 | `undefined` | No stable policy exists yet |
 | `deferred` | Intentionally not part of the current phase |
@@ -85,21 +78,23 @@ Most command-level behavior beyond validation, single-run aggregation, local pac
 |---|---|---|---|
 | `version` | implemented | Prints package version | None for v0 |
 | `validate items` | partially implemented | Validates JSONL parse, required/minItems-like item fields, selected cross-field checks, duplicate item/variant IDs | Not a complete JSON Schema validator |
-| `validate environment` | partially implemented | Validates environment JSON parse, required fields, support mode, parser config, and generation config | Not a complete JSON Schema validator; no cross-file identity check |
+| `validate environment` | partially implemented | Validates environment JSON parse, required fields, support mode, parser config, and generation config | Not a complete JSON Schema validator |
 | `validate results` | partially implemented | Validates JSONL parse, required result fields, condition fields, and selected scoring consistency rules | Not a complete JSON Schema validator |
-| `validate summary` | partially implemented | Validates summary JSON parse, required fields, fill distribution shape, count/rate totals, and parse-fail sentinel consistency | Not a complete JSON Schema validator; no source run/environment cross-check |
-| `prepare-submission` | partially implemented | Validates source environment/run/summary artifacts, copies them into a package directory, writes a manifest, and verifies the package | Does not run aggregation, perform semantic identity cross-checks, regenerate summary, or create reports |
-| `validate manifest` | partially implemented | Validates manifest JSON shape and can optionally verify listed file SHA-256 values plus package_hash | Not a complete JSON Schema validator; standalone manifest validation does not check package path identity unless validating a submission package |
-| `validate submission` | partially implemented | Validates local package manifest, checks submitter/run path identity, and verifies listed file hashes plus package_hash | No regenerated-summary cross-check and no semantic environment/result/summary validation |
+| `validate summary` | partially implemented | Validates summary JSON parse, required fields, fill distribution shape, count/rate totals, and parse-fail sentinel consistency | No source run/environment cross-check inside summary validator |
+| `prepare-submission` | partially implemented | Validates source environment/run/summary artifacts, copies them into a package directory, writes a manifest, and verifies the package | Does not run aggregation, regenerate summary, or create reports |
+| `validate manifest` | partially implemented | Validates manifest JSON shape and can optionally verify listed file SHA-256 values plus package_hash | Standalone manifest validation does not check submission package path identity |
+| `validate submission` | partially implemented | Validates local package manifest, checks submitter/run path identity, requires required artifacts in manifest, verifies hashes, and checks environment/run/summary identity | No regenerated-summary cross-check |
+| `verify-integrity` | partially implemented | Same package-level integrity and semantic identity verification as `validate submission` | No signature or ledger support |
 | `validate model` | specified | `model.toml` validation design exists | No implementation |
 | `validate model-repo` | specified | one-model repository invariant is defined | No implementation |
 | `run` | specified | CLI shape and runner constraints exist | No implementation |
 | `aggregate` | partially implemented | Reads one result JSONL and writes one single-run `summary.json` | No sharded input, multi-run aggregation, summary.md generation, report generation, or manifest writing |
-| `verify-integrity` | partially implemented | Verifies local `manifest.json`, submitter/run path identity, listed file hashes, and canonical package_hash inside one package directory | No regenerated-summary cross-check, no signature or ledger support |
 | `report` | specified | report output role is defined | No implementation |
 | `collect` | specified | convenience command policy exists | No implementation |
 
-## Implemented item validation scope
+## Implemented validation scopes
+
+### Item validation
 
 `validate items` currently checks:
 
@@ -121,17 +116,9 @@ duplicate item_id inside dataset
 duplicate variant_id inside dataset
 ```
 
-Current item tests cover:
+Current item tests cover smoke fixture pass, valid/invalid fixtures, expected code registration, and validation output shape.
 
-```text
-smoke_v0 passes
-valid item fixture passes
-invalid item fixtures fail with expected metadata codes
-fixture expected codes are registered in docs/error_codes.md
-validation output contract shape for pass/fail
-```
-
-## Implemented environment validation scope
+### Environment validation
 
 `validate environment` currently checks:
 
@@ -158,21 +145,12 @@ Current environment validation limitations:
 
 ```text
 not a complete JSON Schema validator
-no environment/result/summary identity cross-check
 no generation_config_hash recomputation
 ```
 
-Current environment validation tests cover:
+Current environment tests cover example pass, missing required field, zero/f_shot conflict, duplicate extraction mode, and output contract shape.
 
-```text
-examples/smoke_v0/environment.json passes
-missing required field fails
-zero support_mode with f_shot > 0 fails
-duplicate extraction mode fails
-validation output contract shape for success
-```
-
-## Implemented result validation scope
+### Result validation
 
 `validate results` currently checks:
 
@@ -195,16 +173,9 @@ item_strict_pass formula consistency
 duplicate result identity tuple
 ```
 
-Current result tests cover:
+Current result tests cover valid/invalid fixtures, expected code registration, and validation output shape.
 
-```text
-valid result fixture passes
-invalid result fixtures fail with expected metadata codes
-result fixture expected codes are registered in docs/error_codes.md
-validation output contract shape for pass/fail
-```
-
-## Implemented summary aggregation scope
+### Summary aggregation
 
 `aggregate` currently supports:
 
@@ -232,17 +203,7 @@ no manifest writing
 no source run.jsonl validation before aggregation
 ```
 
-Current aggregation tests cover:
-
-```text
-repeated fills are counted without deduplication
-overall pass/fail/parse-fail/latency rates are computed
-blank group fill_distribution counts and rates are computed
-parse failures use the sentinel fill key
-entropy and top-fill fields are computed for fixture data
-```
-
-## Implemented summary validation scope
+### Summary validation
 
 `validate summary` currently checks:
 
@@ -264,20 +225,10 @@ Current summary validation limitations:
 
 ```text
 not a complete JSON Schema validator
-no source run.jsonl cross-check
-no environment.json identity cross-check
-no manifest/package cross-check
+no regenerated source run.jsonl cross-check
 ```
 
-Current summary validation tests cover:
-
-```text
-valid summary fixtures pass
-invalid summary fixtures fail with expected metadata codes
-summary fixture expected codes are registered in docs/error_codes.md
-```
-
-## Implemented manifest validation and integrity scope
+### Manifest, submission, and integrity validation
 
 `validate manifest`, `validate submission`, and `verify-integrity` currently check:
 
@@ -300,13 +251,15 @@ each listed file SHA-256 matches raw file bytes
 package_hash matches the canonical v0 package hash calculation
 submitter_id matches the parent directory name for submission-package validation
 run_id matches the package directory name for submission-package validation
+required artifacts environment.json/run.jsonl/summary.json are listed in manifest.json
+required artifacts exist in the package directory
+environment.json, run.jsonl, and summary.json agree on submitter_id/run_id/dataset_id/model_id
 ```
 
-Current manifest/integrity limitations:
+Current manifest/submission limitations:
 
 ```text
 not a complete JSON Schema validator
-no environment/result/summary identity cross-check
 no regenerated-summary cross-check
 no signature verification
 no ledger anchoring
@@ -318,13 +271,15 @@ Current manifest validation tests cover:
 valid temporary package manifest passes file verification
 submission path identity passes when parent/run directory match
 submission path identity mismatch fails
+submission artifact identity mismatch fails even when hashes match
+missing required submission artifact fails
 wrong listed file hash fails
 wrong package_hash fails when file hashes match
 path traversal fails
 missing manifest.json fails for a submission package
 ```
 
-## Implemented prepare-submission scope
+### Prepare-submission
 
 `prepare-submission` currently supports:
 
@@ -349,83 +304,50 @@ Current prepare-submission limitations:
 
 ```text
 does not run aggregate before packaging
-does not check environment/result/summary identity consistency
 does not regenerate summary.json from run.jsonl
 does not produce report files
 ```
 
-Current prepare-submission tests cover:
+Current prepare-submission tests cover package copy, source validation, manifest verification, invalid source rejection, non-empty output rejection, and manifest skip mode.
 
-```text
-copies files and writes a manifest that verifies
-rejects invalid source result artifacts
-rejects non-empty output directory without overwrite
-can skip manifest writing for scratch use
-```
+## Defined but not fully implemented
 
-## Defined but not fully implemented in item validation
-
-| Requirement | Status | Notes |
-|---|---|---|
-| Full `schemas/item.schema.json` validation | partially implemented | Current validator is schema-like, not full JSON Schema |
-| All enum/pattern/type constraints | partially implemented | Some required/type/minItems-like checks only |
-| warning for `missing_expected_error_patterns` | specified | Not implemented |
-| `not_equivalent_variant_aggregation` warning | specified | Not implemented |
-| richer normalized fill policy | partially specified | Current implementation uses `strip()` only |
-| fixture expected-code registry check against `docs/error_codes.md` | implemented | Tests verify fixture expected codes are registered in docs/error_codes.md |
-
-## Defined but not fully implemented in environment validation
-
-| Requirement | Status | Notes |
-|---|---|---|
-| Full `schemas/environment.schema.json` validation | partially implemented | Current validator is schema-like, not full JSON Schema |
-| Environment/result/summary identity consistency | specified | Not implemented |
-| Generation config hash recomputation | specified | Not implemented |
-| Backend/provider compatibility checks | deferred | Not part of v0 core |
-
-## Defined but not fully implemented in result validation
-
-| Requirement | Status | Notes |
-|---|---|---|
-| Full `schemas/result.schema.json` validation | partially implemented | Current validator is schema-like, not full JSON Schema |
-| Generation config canonical hash validation | specified | Not implemented |
-| Complete schema enum/type validation | partially implemented | Only selected checks are implemented |
-| Sharded run JSONL validation | specified | Not implemented |
-| Cross-file environment/result/summary consistency | specified | Not implemented |
-
-## Defined but not fully implemented in summary validation
-
-| Requirement | Status | Notes |
-|---|---|---|
-| Full `schemas/summary.schema.json` validation | partially implemented | Current validator is schema-like, not full JSON Schema |
-| Source `run.jsonl` identity and rate cross-check | specified | Not implemented |
-| `environment.json` identity cross-check | specified | Not implemented |
-| Summary artifact/package validation | specified | Not implemented; belongs to submission or manifest validation |
-
-## Defined but not fully implemented in manifest and submission validation
-
-| Requirement | Status | Notes |
-|---|---|---|
-| Full `schemas/manifest.schema.json` validation | partially implemented | Current validator is schema-like, not full JSON Schema |
-| Manifest generation | partially implemented | Implemented through `prepare-submission`, but no standalone `write-manifest` command |
-| `submitter_id` / `run_id` path identity check | partially implemented | Implemented for `validate submission` and `verify-integrity`; not applied to standalone `validate manifest` |
-| Cross-file environment/result/summary consistency | specified | Not implemented |
-| Regenerate summary from run file and compare | specified | Not implemented |
-| Signature / ledger optional artifacts | deferred | Not part of v0 core |
+| Area | Requirement | Status | Notes |
+|---|---|---|---|
+| Item | Full `schemas/item.schema.json` validation | partially implemented | Current validator is schema-like, not full JSON Schema |
+| Item | Warning for `missing_expected_error_patterns` | specified | Not implemented |
+| Item | `not_equivalent_variant_aggregation` warning | specified | Not implemented |
+| Environment | Full `schemas/environment.schema.json` validation | partially implemented | Current validator is schema-like, not full JSON Schema |
+| Environment | Generation config hash recomputation | specified | Not implemented |
+| Environment | Backend/provider compatibility checks | deferred | Not part of v0 core |
+| Result | Full `schemas/result.schema.json` validation | partially implemented | Current validator is schema-like, not full JSON Schema |
+| Result | Generation config canonical hash validation | specified | Not implemented |
+| Result | Sharded run JSONL validation | specified | Not implemented |
+| Summary | Full `schemas/summary.schema.json` validation | partially implemented | Current validator is schema-like, not full JSON Schema |
+| Summary | Source `run.jsonl` rate/count cross-check | specified | Not implemented |
+| Manifest/submission | Full `schemas/manifest.schema.json` validation | partially implemented | Current validator is schema-like, not full JSON Schema |
+| Manifest/submission | Standalone manifest generation | partially implemented | Implemented through `prepare-submission`, but no standalone `write-manifest` command |
+| Manifest/submission | Regenerate summary from run file and compare | specified | Not implemented |
+| Manifest/submission | Signature / ledger optional artifacts | deferred | Not part of v0 core |
+| Model | `model.toml` validation | specified | No TOML parser/validator |
+| Model repo | one-model repository rule | specified | No validator |
+| Report | report generation | specified | No implementation |
+| Collect | end-to-end convenience command | specified | No implementation |
+| Run | model execution | specified | No implementation |
 
 ## Data and schema status
 
 | Area | Status | Current state | Gap |
 |---|---|---|---|
 | Item schema | specified | `schemas/item.schema.json` exists | Full runtime validation not implemented |
-| Environment schema | partially implemented | `schemas/environment.schema.json` exists; minimal environment validator exists | Full runtime schema validation and cross-file checks not implemented |
+| Environment schema | partially implemented | `schemas/environment.schema.json` exists; minimal environment validator exists | Full runtime schema validation not implemented |
 | Result schema | partially implemented | `schemas/result.schema.json` exists and includes `known_wrong` fill class | Full runtime schema validation not implemented |
 | Summary schema | partially implemented | `schemas/summary.schema.json` exists; summary aggregation and validation cores exist | Full runtime schema validation and source cross-check not implemented |
-| Manifest schema | partially implemented | `schemas/manifest.schema.json` exists; manifest validation and local integrity verification cores exist | Full runtime schema validation and cross-file checks not implemented |
+| Manifest schema | partially implemented | `schemas/manifest.schema.json` exists; manifest validation and local integrity/semantic verification cores exist | Full runtime schema validation not implemented |
 | Model schema | specified | `schemas/model.schema.json` exists | No TOML parser/validator |
 | Validation output schema | specified | `schemas/validation_output.schema.json` exists | No JSON Schema execution test yet |
 | smoke dataset | implemented as data | `datasets/smoke_v0/items.jsonl` exists and is covered by tests | Only one item; not broad evaluation data |
-| reference example package | specified fixture | `examples/smoke_v0` exists | Hash verification is implemented; regenerated-summary verification is not |
+| reference example package | specified fixture | `examples/smoke_v0` exists | Hash and semantic identity verification exist; regenerated-summary verification is not implemented |
 | model repository skeleton | specified template | `examples/model_repository` exists | No copier or scaffold command |
 
 ## Parser, scoring, and result-record status
@@ -443,46 +365,15 @@ can skip manifest writing for scratch use
 | parser/scorer CLI surface | specified | future result generation should use parser/scorer | No run command or model backend integration |
 | repeated fill counting | implemented | Do not deduplicate repeated fills | Implemented in single-run aggregation |
 
-Current parser/scorer tests cover:
-
-```text
-accepted exact full-text
-accepted segment extraction
-near_miss classification
-known_wrong classification
-generic wrong classification
-instruction-wrapper parse failure
-segment parse failure
-```
-
-Current result-record tests cover:
-
-```text
-required result fields are present
-parser/scorer output is preserved in the assembled record
-missing required metadata raises an error
-```
-
-## Aggregation and reporting status
-
-| Area | Status | Defined behavior | Gap |
-|---|---|---|---|
-| summary shape | partially implemented | array-form `fill_distribution` with `fill_key` | Implemented for single-run summary JSON; no full schema execution or source cross-check |
-| parse-fail sentinel | implemented | `__PARSE_FAIL__` | Implemented in aggregation and summary validation |
-| grouping keys | partially implemented | model/dataset/item/blank/prompt/parser/generation keys | Implemented for single-run aggregation; no sharded or multi-run grouping |
-| repeated fill counting | implemented | Count every occurrence | Implemented and tested in aggregation |
-| report files | specified | `reports/run_index.csv`, `blank_fills.csv`, etc. | No report generator |
-| main CI report regeneration | specified | regenerate after merge | No implementation |
-
 ## Integrity status
 
 | Area | Status | Defined behavior | Gap |
 |---|---|---|---|
 | file hash | implemented | SHA-256 over raw file bytes | Used for local manifest verification and prepare-submission |
 | package hash | implemented | canonical compact UTF-8 JSON over selected fields | Used for verification and prepare-submission |
-| manifest schema | partially implemented | `schemas/manifest.schema.json` | Schema-like validator exists; no full JSON Schema execution |
 | manifest generation | partially implemented | Write manifest for prepared submission package | No standalone manifest generation command |
-| manifest verification | partially implemented | verify per-file and package hash | Implemented for local package directory; no cross-file semantic checks |
+| manifest verification | partially implemented | verify per-file and package hash | Implemented for local package directory |
+| semantic identity verification | partially implemented | environment/run/summary identity fields must agree | No regenerated-summary check |
 | model authentication | deferred / out of scope | Explicitly not provided | No implementation by design |
 | execution attestation | deferred / out of scope | Explicitly not provided | No implementation by design |
 
@@ -490,9 +381,7 @@ missing required metadata raises an error
 
 | Area | Status | Defined behavior | Gap |
 |---|---|---|---|
-| local submission packaging | partially implemented | create local package from existing validated artifacts | No semantic identity cross-check |
-| one model repository rule | specified | one repo = one model identity | No validator |
-| `model.toml` | specified | schema exists | No TOML validation implementation |
+| local submission packaging | partially implemented | create local package from existing validated artifacts | No regenerated summary validation |
 | submitter identity | partially implemented | manifest must match local submission package path | No PR-author enforcement implementation |
 | run ID | specified | dataset + UTC timestamp + random suffix | No generator implementation |
 | result PR scope | specified | one new submission package only | No CI path classifier implementation |
@@ -503,16 +392,16 @@ missing required metadata raises an error
 
 | Area | Status | Current state | Gap |
 |---|---|---|---|
-| unit test workflow | implemented | `.github/workflows/ci.yml` runs unittest | Recheck after latest environment/source-validation changes |
+| unit test workflow | implemented | `.github/workflows/ci.yml` runs unittest | Recheck after latest semantic identity changes |
 | item fixture regression | implemented | unittest checks valid/invalid item fixtures | No full schema validator test |
-| environment validation regression | implemented | unittest checks example environment, missing field, zero/f_shot conflict, duplicate extraction mode, and output contract | No full JSON Schema validation or cross-file semantic check |
+| environment validation regression | implemented | unittest checks example environment, missing field, zero/f_shot conflict, duplicate extraction mode, and output contract | No full JSON Schema validation |
 | parser fixture regression | implemented | unittest checks parser fixtures against pure parser/scorer output | No result schema validation yet |
 | result-record assembly regression | implemented | unittest checks required fields, preserved parser output, and missing metadata error | No result schema execution test yet |
 | result validation regression | implemented | unittest checks valid/invalid result fixtures and expected codes | No full JSON Schema validation yet |
 | summary aggregation regression | implemented | unittest checks repeated fills, rates, sentinel parse failures, entropy, and top fill fields | Single-run fixture only |
 | summary validation regression | implemented | unittest checks valid/invalid summary fixtures and expected codes | No full JSON Schema validation or source cross-check |
-| manifest validation regression | implemented | unittest checks valid package verification, wrong file hash, wrong package hash, path traversal, missing manifest, and submission path identity | No full JSON Schema validation or cross-file semantic check |
-| prepare-submission regression | implemented | unittest checks package copy, source validation, manifest verification, invalid source rejection, non-empty output rejection, and manifest skip mode | No semantic identity cross-check |
+| manifest validation regression | implemented | unittest checks file/package hash, path traversal, missing manifest, path identity, required artifacts, and semantic identity | No full JSON Schema validation |
+| prepare-submission regression | implemented | unittest checks package copy, source validation, manifest verification, invalid source rejection, non-empty output rejection, and manifest skip mode | No regenerated-summary check |
 | expected error-code registry regression | implemented | unittest checks fixture expected codes are registered in docs/error_codes.md | Applies to item, result, and summary fixtures; manifest/environment tests use direct assertions |
 | validation output contract regression | partially implemented | Tests check `status/errors/warnings/info` shape without JSON Schema execution | No schema execution test yet |
 | changed-path PR classification | specified | CI policy defines it | No implementation |
