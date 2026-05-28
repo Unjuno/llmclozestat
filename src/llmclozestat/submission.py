@@ -11,7 +11,7 @@ from llmclozestat.manifest_validation import (
     PACKAGE_HASH_INPUT_DESCRIPTION,
     compute_package_hash,
     sha256_file,
-    validate_submission_manifest,
+    validate_manifest_file,
 )
 from llmclozestat.result_validation import validate_results_file
 from llmclozestat.summary_validation import validate_summary_file
@@ -47,6 +47,7 @@ def prepare_submission_package(
     This function intentionally does not run a model or aggregate results. By
     default, it validates the existing environment/run/summary artifacts before
     copying them, then optionally writes a v0 manifest for package-level integrity.
+    Full submission semantic validation belongs to validate-submission.
     """
 
     _require_non_empty("submitter_id", submitter_id)
@@ -85,10 +86,11 @@ def prepare_submission_package(
             relative_paths=sorted(copied_paths),
             created_at=created_at,
         )
-        (out_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-        validation = validate_submission_manifest(out_dir)
+        manifest_path = out_dir / "manifest.json"
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        validation = validate_manifest_file(manifest_path, package_dir=out_dir, verify_files=True)
         if validation.failed:
-            raise PrepareSubmissionError(f"Prepared manifest failed verification: {validation.to_dict()}")
+            raise PrepareSubmissionError(f"Prepared manifest failed file verification: {validation.to_dict()}")
         manifest_written = True
 
     return {
