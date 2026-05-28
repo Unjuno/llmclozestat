@@ -2,12 +2,13 @@
 
 This note records implementation status changes that should be folded back into `docs/status_matrix.md` when the next status-matrix cleanup is performed.
 
-As of the latest sync, the summary, manifest, and prepare-submission implementation notes have already been reflected in `docs/status_matrix.md`. Keep this file short and delete sections once they become redundant.
+As of the latest sync, the summary, environment, manifest, and prepare-submission implementation notes have already been reflected in `docs/status_matrix.md`. Keep this file short and delete sections once they become redundant.
 
 ## Newly implemented CLI surface
 
 ```text
 llmclozestat aggregate --input <run.jsonl> --out <summary.json>
+llmclozestat validate environment --input <environment.json>
 llmclozestat validate summary --input <summary.json>
 llmclozestat prepare-submission --submitter-id <id> --run-id <id> --environment-json <environment.json> --run-jsonl <run.jsonl> --summary-json <summary.json> --out-dir <submission-dir>
 llmclozestat validate manifest --input <manifest.json> [--verify-files]
@@ -18,6 +19,7 @@ llmclozestat verify-integrity --path <submission-package-dir>
 ## Newly implemented library core
 
 ```text
+environment JSON validation helper
 summary aggregation helper
 summary JSON validation core
 manifest JSON validation helper
@@ -25,7 +27,29 @@ file SHA-256 helper
 canonical package hash helper
 local manifest integrity verification helper
 prepare-submission package helper
+source artifact validation before packaging
 submission path identity checker
+```
+
+## Environment validation scope
+
+Current scope:
+
+```text
+environment JSON parse
+selected required environment fields
+support_mode / f_shot consistency
+parser_config shape
+extraction_modes_enabled shape and uniqueness
+generation_config temperature / max_tokens / top_p checks
+```
+
+Current limitations:
+
+```text
+not a full JSON Schema validator
+no environment/result/summary identity cross-check
+no generation_config_hash recomputation
 ```
 
 ## Summary aggregation scope
@@ -107,6 +131,9 @@ no signature or ledger verification
 Current scope:
 
 ```text
+validate source environment.json by default
+validate source run.jsonl by default
+validate source summary.json by default
 copy existing environment.json
 copy existing run.jsonl
 copy existing summary.json
@@ -121,14 +148,15 @@ Current limitations:
 ```text
 does not run model execution
 does not aggregate run.jsonl
-does not validate source artifacts before copy
 does not perform semantic identity cross-checks
 ```
 
 ## Current executable pipeline
 
 ```text
+environment.json
 run.jsonl
+  -> llmclozestat validate environment --input environment.json
   -> llmclozestat validate results --input run.jsonl
   -> llmclozestat aggregate --input run.jsonl --out summary.json
   -> llmclozestat validate summary --input summary.json
