@@ -2,14 +2,16 @@
 
 This note records implementation status changes that should be folded back into `docs/status_matrix.md` when the next status-matrix cleanup is performed.
 
-As of the latest sync, the summary and manifest implementation notes have already been reflected in `docs/status_matrix.md`. Keep this file short and delete sections once they become redundant.
+As of the latest sync, the summary, manifest, and prepare-submission implementation notes have already been reflected in `docs/status_matrix.md`. Keep this file short and delete sections once they become redundant.
 
 ## Newly implemented CLI surface
 
 ```text
 llmclozestat aggregate --input <run.jsonl> --out <summary.json>
 llmclozestat validate summary --input <summary.json>
+llmclozestat prepare-submission --submitter-id <id> --run-id <id> --environment-json <environment.json> --run-jsonl <run.jsonl> --summary-json <summary.json> --out-dir <submission-dir>
 llmclozestat validate manifest --input <manifest.json> [--verify-files]
+llmclozestat validate submission --path <submission-package-dir>
 llmclozestat verify-integrity --path <submission-package-dir>
 ```
 
@@ -22,6 +24,7 @@ manifest JSON validation helper
 file SHA-256 helper
 canonical package hash helper
 local manifest integrity verification helper
+prepare-submission package helper
 ```
 
 ## Summary aggregation scope
@@ -46,7 +49,7 @@ no sharded input
 no multi-run aggregation
 no exclusion filters
 no report generation
-no manifest writing
+no manifest writing inside aggregate
 ```
 
 ## Summary validation scope
@@ -91,12 +94,33 @@ Current limitations:
 
 ```text
 not a full JSON Schema validator
-no manifest generation
-no prepare-submission command
 no submitter_id/run_id path identity check
 no environment/result/summary identity cross-check
 no regenerated-summary cross-check
 no signature or ledger verification
+```
+
+## Prepare-submission scope
+
+Current scope:
+
+```text
+copy existing environment.json
+copy existing run.jsonl
+copy existing summary.json
+optionally copy existing summary.md
+write manifest.json by default
+verify written manifest
+reject non-empty output directories unless --overwrite is passed
+```
+
+Current limitations:
+
+```text
+does not run model execution
+does not aggregate run.jsonl
+does not validate source artifacts before copy
+does not perform semantic identity cross-checks
 ```
 
 ## Current executable pipeline
@@ -106,7 +130,8 @@ run.jsonl
   -> llmclozestat validate results --input run.jsonl
   -> llmclozestat aggregate --input run.jsonl --out summary.json
   -> llmclozestat validate summary --input summary.json
-  -> llmclozestat validate manifest --input manifest.json --verify-files
+  -> llmclozestat prepare-submission --submitter-id <id> --run-id <id> --environment-json environment.json --run-jsonl run.jsonl --summary-json summary.json --out-dir submissions/<submitter_id>/<run_id>
+  -> llmclozestat validate submission --path submissions/<submitter_id>/<run_id>
   -> llmclozestat verify-integrity --path submissions/<submitter_id>/<run_id>
 ```
 
@@ -114,8 +139,6 @@ run.jsonl
 
 ```text
 run
-prepare-submission
-validate submission
 validate model
 validate model-repo
 report
