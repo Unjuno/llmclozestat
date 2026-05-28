@@ -22,18 +22,19 @@ Currently implemented CLI commands:
 - `validate items` minimal item JSONL validation
 - `validate results` minimal result JSONL consistency validation
 - `aggregate` minimal result JSONL to summary JSON aggregation
+- `validate summary` minimal summary JSON validation
 
 Currently implemented library core:
 
 - strict-v0 parser/scorer pure function core
 - result-record assembly helper
 - summary aggregation helper
+- summary JSON validation core
 
 Still design targets:
 
 - `run`
 - `prepare-submission`
-- `validate summary`
 - `validate manifest`
 - `validate submission`
 - `validate model`
@@ -93,9 +94,11 @@ The repository currently contains:
 - fixture policy and parser/result/summary aggregation fixtures;
 - minimal `validate items` and `validate results` commands;
 - minimal `aggregate` command;
+- minimal `validate summary` command;
 - strict-v0 parser/scorer core;
 - result-record assembly helper;
 - summary aggregation helper;
+- summary validation helper;
 - package-level integrity design.
 
 The first dataset, `smoke_v0`, is intentionally small. It is for validating the pipeline and collecting local probe statistics, not for broad model evaluation.
@@ -209,6 +212,8 @@ This is self-reported measurement data. For large or repeated result collection,
 - `docs/conceptual_model.md` — conceptual model and scoring design
 - `docs/design.md` — project design and scope
 - `docs/status_matrix.md` — implemented/specified/undefined status matrix
+- `docs/current_status_notes.md` — temporary implementation-boundary notes pending status-matrix synchronization
+- `docs/summary_scope.md` — single-run summary policy and future aggregate-report separation
 - `docs/operating_model.md` — model-repository, fixed-condition, PR, CI, report, and storage policies
 - `docs/model_repository.md` — model.toml metadata and one-model repository rules
 - `docs/model_repository_usage.md` — practical model repository setup and changing-model guide
@@ -233,7 +238,7 @@ This is self-reported measurement data. For large or repeated result collection,
 1. Finalize item/result formats.
 2. Implement parser and scorer.
 3. Implement basic aggregation.
-4. Add validation for item/result files.
+4. Add validation for item/result/summary files.
 5. Add package manifest and local integrity verification.
 6. Add OpenAI-compatible runner for LM Studio and similar local servers.
 7. Add lightweight terminal progress display.
