@@ -9,6 +9,7 @@ from llmclozestat.aggregation import write_summary_file
 from llmclozestat.environment_validation import validate_environment_file
 from llmclozestat.item_validation import validate_items_file
 from llmclozestat.manifest_validation import validate_manifest_file, validate_submission_manifest
+from llmclozestat.model_repository_validation import validate_model_repository
 from llmclozestat.model_validation import validate_model_file
 from llmclozestat.result_validation import validate_results_file
 from llmclozestat.submission import PrepareSubmissionError, prepare_submission_package
@@ -94,6 +95,14 @@ def validate_items(dataset: Path = typer.Option(..., "--dataset", exists=False, 
 @validate_app.command("model")
 def validate_model(input_path: Path = typer.Option(..., "--input", exists=False, file_okay=True, dir_okay=False)) -> None:
     result = validate_model_file(input_path)
+    typer.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
+    if result.failed:
+        raise typer.Exit(code=1)
+
+
+@validate_app.command("model-repo")
+def validate_model_repo(path: Path = typer.Option(..., "--path", exists=False, file_okay=False, dir_okay=True)) -> None:
+    result = validate_model_repository(path)
     typer.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
     if result.failed:
         raise typer.Exit(code=1)
