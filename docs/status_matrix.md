@@ -27,6 +27,8 @@ llmclozestat validate items --dataset <items.jsonl>
 llmclozestat validate results --input <run.jsonl>
 llmclozestat aggregate --input <run.jsonl> --out <summary.json>
 llmclozestat validate summary --input <summary.json>
+llmclozestat validate manifest --input <manifest.json> [--verify-files]
+llmclozestat verify-integrity --path <submission-package-dir>
 ```
 
 Implemented library core:
@@ -38,6 +40,10 @@ result-record assembly helper
 result JSONL validation core
 summary aggregation helper
 summary JSON validation core
+manifest JSON validation helper
+file SHA-256 helper
+canonical package hash helper
+local manifest integrity verification helper
 ```
 
 The current executable pipeline is:
@@ -47,9 +53,10 @@ run.jsonl
   -> validate results
   -> aggregate summary.json
   -> validate summary
+  -> validate manifest / verify-integrity when a package manifest exists
 ```
 
-Most command-level behavior beyond item/result/summary validation and single-run aggregation is still specified but not implemented.
+Most command-level behavior beyond item/result/summary/manifest validation, single-run aggregation, and local file-hash verification is still specified but not implemented.
 
 ## Status terms
 
@@ -70,14 +77,14 @@ Most command-level behavior beyond item/result/summary validation and single-run
 | `validate items` | partially implemented | Validates JSONL parse, required/minItems-like item fields, selected cross-field checks, duplicate item/variant IDs | Not a complete JSON Schema validator |
 | `validate results` | partially implemented | Validates JSONL parse, required result fields, condition fields, and selected scoring consistency rules | Not a complete JSON Schema validator |
 | `validate summary` | partially implemented | Validates summary JSON parse, required fields, fill distribution shape, count/rate totals, and parse-fail sentinel consistency | Not a complete JSON Schema validator; no source run/environment cross-check |
-| `validate manifest` | specified | Manifest validation design exists | No implementation |
-| `validate submission` | specified | Submission validation design exists | No implementation |
+| `validate manifest` | partially implemented | Validates manifest JSON shape and can optionally verify listed file SHA-256 values plus package_hash | Not a complete JSON Schema validator; no submitter/run path identity check |
+| `validate submission` | specified | Submission validation design exists | No command implementation |
 | `validate model` | specified | `model.toml` validation design exists | No implementation |
 | `validate model-repo` | specified | one-model repository invariant is defined | No implementation |
 | `run` | specified | CLI shape and runner constraints exist | No implementation |
 | `aggregate` | partially implemented | Reads one result JSONL and writes one single-run `summary.json` | No sharded input, multi-run aggregation, summary.md generation, report generation, or manifest writing |
 | `prepare-submission` | specified | package layout and manifest requirement exist | No implementation |
-| `verify-integrity` | specified | canonical package hash is defined | No implementation |
+| `verify-integrity` | partially implemented | Verifies local `manifest.json`, listed file hashes, and canonical package_hash inside one package directory | No regenerated-summary cross-check, no path identity check, no signature or ledger support |
 | `report` | specified | report output role is defined | No implementation |
 | `collect` | specified | convenience command policy exists | No implementation |
 
@@ -225,6 +232,57 @@ invalid summary fixtures fail with expected metadata codes
 summary fixture expected codes are registered in docs/error_codes.md
 ```
 
+## Implemented manifest validation and integrity scope
+
+`validate manifest` currently checks:
+
+```text
+file existence
+manifest JSON parseability
+manifest JSON is an object
+selected top-level required manifest fields
+hash_algorithm is sha256
+package_hash has sha256:<64 lowercase hex> form
+files is a non-empty array
+selected file entry required fields
+file paths are safe relative POSIX-style paths
+manifest.json is not listed inside its own v0 manifest file set
+sha256 fields are 64 lowercase hex characters
+size_bytes is non-negative integer or null when present
+```
+
+When `--verify-files` is used, or when `verify-integrity --path <package>` is used, current integrity verification checks:
+
+```text
+each listed file exists inside the package directory
+each listed file is a regular file
+each listed file SHA-256 matches raw file bytes
+package_hash matches the canonical v0 package hash calculation
+```
+
+Current manifest/integrity limitations:
+
+```text
+not a complete JSON Schema validator
+no submitter_id/run_id path identity check
+no environment/result/summary identity cross-check
+no regenerated-summary cross-check
+no manifest generation
+no prepare-submission command
+no signature verification
+no ledger anchoring
+```
+
+Current manifest validation tests cover:
+
+```text
+valid temporary package manifest passes file verification
+wrong listed file hash fails
+wrong package_hash fails when file hashes match
+path traversal fails
+missing manifest.json fails for a submission package
+```
+
 ## Defined but not fully implemented in item validation
 
 | Requirement | Status | Notes |
@@ -255,6 +313,17 @@ summary fixture expected codes are registered in docs/error_codes.md
 | `environment.json` identity cross-check | specified | Not implemented |
 | Summary artifact/package validation | specified | Not implemented; belongs to submission or manifest validation |
 
+## Defined but not fully implemented in manifest validation
+
+| Requirement | Status | Notes |
+|---|---|---|
+| Full `schemas/manifest.schema.json` validation | partially implemented | Current validator is schema-like, not full JSON Schema |
+| Manifest generation | specified | Not implemented |
+| `submitter_id` / `run_id` path identity check | specified | Not implemented |
+| Cross-file environment/result/summary consistency | specified | Not implemented |
+| Regenerate summary from run file and compare | specified | Not implemented |
+| Signature / ledger optional artifacts | deferred | Not part of v0 core |
+
 ## Data and schema status
 
 | Area | Status | Current state | Gap |
@@ -263,11 +332,11 @@ summary fixture expected codes are registered in docs/error_codes.md
 | Result schema | partially implemented | `schemas/result.schema.json` exists and includes `known_wrong` fill class | Full runtime schema validation not implemented |
 | Environment schema | specified | `schemas/environment.schema.json` exists | No environment validator |
 | Summary schema | partially implemented | `schemas/summary.schema.json` exists; summary aggregation and validation cores exist | Full runtime schema validation and source cross-check not implemented |
-| Manifest schema | specified | `schemas/manifest.schema.json` | No manifest validator/verifier |
+| Manifest schema | partially implemented | `schemas/manifest.schema.json` exists; manifest validation and local integrity verification cores exist | Full runtime schema validation, generation, and cross-file checks not implemented |
 | Model schema | specified | `schemas/model.schema.json` exists | No TOML parser/validator |
 | Validation output schema | specified | `schemas/validation_output.schema.json` exists | No JSON Schema execution test yet |
 | smoke dataset | implemented as data | `datasets/smoke_v0/items.jsonl` exists and is covered by tests | Only one item; not broad evaluation data |
-| reference example package | specified fixture | `examples/smoke_v0` exists | Not verified by implemented manifest code |
+| reference example package | specified fixture | `examples/smoke_v0` exists | Hash verification is implemented; regenerated-summary verification is not |
 | model repository skeleton | specified template | `examples/model_repository` exists | No copier or scaffold command |
 
 ## Parser, scoring, and result-record status
@@ -320,10 +389,10 @@ missing required metadata raises an error
 
 | Area | Status | Defined behavior | Gap |
 |---|---|---|---|
-| file hash | specified | SHA-256 over raw file bytes | No implementation |
-| package hash | specified | canonical compact UTF-8 JSON over selected fields | No implementation |
-| manifest schema | specified | `schemas/manifest.schema.json` | No validator |
-| manifest verification | specified | verify per-file and package hash | No implementation |
+| file hash | implemented | SHA-256 over raw file bytes | Used for local manifest verification; no manifest generator yet |
+| package hash | implemented | canonical compact UTF-8 JSON over selected fields | Used for verification; no manifest generator yet |
+| manifest schema | partially implemented | `schemas/manifest.schema.json` | Schema-like validator exists; no full JSON Schema execution |
+| manifest verification | partially implemented | verify per-file and package hash | Implemented for local package directory; no cross-file semantic checks |
 | model authentication | deferred / out of scope | Explicitly not provided | No implementation by design |
 | execution attestation | deferred / out of scope | Explicitly not provided | No implementation by design |
 
@@ -343,14 +412,15 @@ missing required metadata raises an error
 
 | Area | Status | Current state | Gap |
 |---|---|---|---|
-| unit test workflow | implemented | `.github/workflows/ci.yml` runs unittest | Recheck after latest status-matrix sync |
+| unit test workflow | implemented | `.github/workflows/ci.yml` runs unittest | Recheck after latest manifest changes |
 | item fixture regression | implemented | unittest checks valid/invalid item fixtures | No full schema validator test |
 | parser fixture regression | implemented | unittest checks parser fixtures against pure parser/scorer output | No result schema validation yet |
 | result-record assembly regression | implemented | unittest checks required fields, preserved parser output, and missing metadata error | No result schema execution test yet |
 | result validation regression | implemented | unittest checks valid/invalid result fixtures and expected codes | No full JSON Schema validation yet |
 | summary aggregation regression | implemented | unittest checks repeated fills, rates, sentinel parse failures, entropy, and top fill fields | Single-run fixture only |
 | summary validation regression | implemented | unittest checks valid/invalid summary fixtures and expected codes | No full JSON Schema validation or source cross-check |
-| expected error-code registry regression | implemented | unittest checks fixture expected codes are registered in docs/error_codes.md | Applies to item, result, and summary fixtures |
+| manifest validation regression | implemented | unittest checks valid package verification, wrong file hash, wrong package hash, path traversal, and missing manifest | No full JSON Schema validation or cross-file semantic check |
+| expected error-code registry regression | implemented | unittest checks fixture expected codes are registered in docs/error_codes.md | Applies to item, result, and summary fixtures; manifest tests use direct assertions |
 | validation output contract regression | partially implemented | Tests check `status/errors/warnings/info` shape without JSON Schema execution | No schema execution test yet |
 | changed-path PR classification | specified | CI policy defines it | No implementation |
 | result PR restrictions | specified | CI policy defines it | No implementation |
