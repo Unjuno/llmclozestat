@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 
@@ -12,7 +12,8 @@ PACKAGE_HASH_INPUT_DESCRIPTION = (
     "exclude manifest/signature/ledger; utf-8; compact)"
 )
 
-EXCLUDED_PACKAGE_HASH_INPUT_PATHS = {"manifest.json", "signature.json", "ledger_receipt.json"}
+MANIFEST_SELF_REFERENCE_PATH = "manifest.json"
+EXCLUDED_PACKAGE_HASH_INPUT_PATHS = {MANIFEST_SELF_REFERENCE_PATH, "signature.json", "ledger_receipt.json"}
 REQUIRED_MANIFEST_FIELDS = {
     "manifest_version",
     "submitter_id",
@@ -165,6 +166,7 @@ def verify_manifest_integrity(
     if not isinstance(files, list):
         return
 
+    package_root = package_dir.resolve()
     for index, file_entry in enumerate(files):
         file_path = f"{path}:files[{index}]"
         if not isinstance(file_entry, dict):
@@ -179,6 +181,9 @@ def verify_manifest_integrity(
         actual_path = package_dir / rel_path
         if not actual_path.exists() or not actual_path.is_file():
             result.add_error("missing_listed_file", f"Listed file does not exist: {rel_path}", file_path)
+            continue
+        if not _is_inside_directory(actual_path, package_root):
+            result.add_error("path_traversal", f"Listed file resolves outside package directory: {rel_path}", file_path)
             continue
 
         actual_sha256 = sha256_file(actual_path)
@@ -253,10 +258,10 @@ def _validate_file_entry(
         if rel_path in seen_paths:
             result.add_error("manifest_schema_validation_error", f"Duplicate manifest file path: {rel_path}", path)
         seen_paths.add(rel_path)
-        if rel_path in EXCLUDED_PACKAGE_HASH_INPUT_PATHS:
+        if rel_path == MANIFEST_SELF_REFERENCE_PATH:
             result.add_error(
                 "unexpected_manifest_self_reference",
-                f"{rel_path} must not be included in v0 package hash input",
+                "manifest.json must not be listed inside its own v0 manifest file set",
                 path,
             )
 
@@ -270,12 +275,22 @@ def _validate_file_entry(
 
 
 def _is_safe_relative_path(path: str) -> bool:
-    path_obj = Path(path)
-    if path_obj.is_absolute():
+    if "\\" in path or ":" in path:
         return False
-    if "" in path.split("/"):
+    if path.startswith("/"):
         return False
-    return ".." not in path_obj.parts
+    parts = path.split("/")
+    if not parts or any(part in {"", ".."} for part in parts):
+        return False
+    return not PurePosixPath(path).is_absolute()
+
+
+def _is_inside_directory(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root)
+    except ValueError:
+        return False
+    return True
 
 
 def _is_sha256_hex(value: str) -> bool:
