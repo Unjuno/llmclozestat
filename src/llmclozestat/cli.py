@@ -11,6 +11,7 @@ from llmclozestat.item_validation import validate_items_file
 from llmclozestat.manifest_validation import validate_manifest_file, validate_submission_manifest
 from llmclozestat.model_repository_validation import validate_model_repository
 from llmclozestat.model_validation import validate_model_file
+from llmclozestat.reporting import ReportGenerationError, generate_reports
 from llmclozestat.result_validation import validate_results_file
 from llmclozestat.submission import PrepareSubmissionError, prepare_submission_package
 from llmclozestat.summary_validation import validate_summary_file
@@ -34,6 +35,19 @@ def aggregate(
 ) -> None:
     summary = write_summary_file(input_path, out)
     typer.echo(json.dumps({"status": "passed", "summary_path": str(out), "n_trials": summary["n_trials"]}, ensure_ascii=False))
+
+
+@app.command("report")
+def report(
+    submissions_dir: Path = typer.Option(..., "--submissions-dir", exists=False, file_okay=False, dir_okay=True),
+    out_dir: Path = typer.Option(..., "--out-dir", exists=False, file_okay=False, dir_okay=True),
+) -> None:
+    try:
+        result = generate_reports(submissions_dir, out_dir)
+    except ReportGenerationError as exc:
+        typer.echo(json.dumps({"status": "failed", "errors": [{"code": "report_generation_error", "message": str(exc)}]}, ensure_ascii=False, indent=2))
+        raise typer.Exit(code=1) from exc
+    typer.echo(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 @app.command("prepare-submission")
