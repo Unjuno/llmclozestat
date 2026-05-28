@@ -7,6 +7,7 @@ import typer
 
 from llmclozestat.aggregation import write_summary_file
 from llmclozestat.item_validation import validate_items_file
+from llmclozestat.manifest_validation import validate_manifest_file, validate_submission_manifest
 from llmclozestat.result_validation import validate_results_file
 from llmclozestat.summary_validation import validate_summary_file
 
@@ -29,6 +30,23 @@ def aggregate(
 ) -> None:
     summary = write_summary_file(input_path, out)
     typer.echo(json.dumps({"status": "passed", "summary_path": str(out), "n_trials": summary["n_trials"]}, ensure_ascii=False))
+
+
+@app.command("verify-integrity")
+def verify_integrity(
+    path: Path = typer.Option(
+        ...,
+        "--path",
+        exists=False,
+        file_okay=False,
+        dir_okay=True,
+        help="Path to a submission package directory containing manifest.json.",
+    ),
+) -> None:
+    result = validate_submission_manifest(path)
+    typer.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
+    if result.failed:
+        raise typer.Exit(code=1)
 
 
 @validate_app.command("items")
@@ -72,6 +90,25 @@ def validate_summary(
     input_path: Path = typer.Option(..., "--input", exists=False, file_okay=True, dir_okay=False),
 ) -> None:
     result = validate_summary_file(input_path)
+    typer.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
+    if result.failed:
+        raise typer.Exit(code=1)
+
+
+@validate_app.command("manifest")
+def validate_manifest(
+    input_path: Path = typer.Option(..., "--input", exists=False, file_okay=True, dir_okay=False),
+    package_dir: Path | None = typer.Option(
+        None,
+        "--package-dir",
+        exists=False,
+        file_okay=False,
+        dir_okay=True,
+        help="Package directory for hash verification. Defaults to the manifest parent when --verify-files is set.",
+    ),
+    verify_files: bool = typer.Option(False, "--verify-files", help="Verify listed file hashes and package_hash."),
+) -> None:
+    result = validate_manifest_file(input_path, package_dir=package_dir, verify_files=verify_files)
     typer.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
     if result.failed:
         raise typer.Exit(code=1)
