@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
+from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -30,6 +32,8 @@ REQUIRED_MANIFEST_FIELDS = {
 REQUIRED_FILE_FIELDS = {"path", "sha256"}
 REQUIRED_SUBMISSION_ARTIFACTS = {"environment.json", "run.jsonl", "summary.json"}
 IDENTITY_FIELDS = ("submitter_id", "run_id", "dataset_id", "model_id")
+SUBMITTER_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,38}$")
+RUN_ID_SUFFIX_RE = re.compile(r"^(?P<timestamp>\d{8}T\d{6}Z)-(?P<random>[0-9a-f]{6,12})$")
 SUMMARY_TOP_LEVEL_COMPARE_FIELDS = (
     "summary_version",
     "submitter_id",
@@ -109,12 +113,6 @@ def validate_manifest_file(
     *,
     verify_files: bool = False,
 ) -> ManifestValidationResult:
-    """Validate a manifest and optionally verify package file hashes.
-
-    This is a schema-like v0 validator, not a complete JSON Schema validator.
-    When verify_files=True, package_dir defaults to the manifest parent directory.
-    """
-
     result = ManifestValidationResult()
     manifest = _load_manifest(input_path, result)
     if manifest is None:
@@ -134,8 +132,6 @@ def validate_manifest_file(
 
 
 def validate_submission_manifest(package_dir: Path) -> ManifestValidationResult:
-    """Validate and verify package_dir/manifest.json."""
-
     manifest_path = package_dir / "manifest.json"
     result = ManifestValidationResult()
     if not manifest_path.exists():
@@ -232,11 +228,7 @@ def verify_manifest_integrity(
 
         actual_sha256 = sha256_file(actual_path)
         if actual_sha256 != expected_sha256:
-            result.add_error(
-                "wrong_file_hash",
-                f"Listed SHA-256 for {rel_path} does not match raw file bytes",
-                file_path,
-            )
+            result.add_error("wrong_file_hash", f"Listed SHA-256 for {rel_path} does not match raw file bytes", file_path)
 
     if result.failed:
         return
@@ -244,11 +236,7 @@ def verify_manifest_integrity(
     expected_package_hash = manifest.get("package_hash")
     actual_package_hash = compute_package_hash(manifest)
     if expected_package_hash != actual_package_hash:
-        result.add_error(
-            "wrong_package_hash",
-            "package_hash does not match the canonical manifest calculation",
-            path,
-        )
+        result.add_error("wrong_package_hash", "package_hash does not match the canonical manifest calculation", path)
 
 
 def compute_package_hash(manifest: dict[str, Any]) -> str:
@@ -260,9 +248,8 @@ def compute_package_hash(manifest: dict[str, Any]) -> str:
                 continue
             rel_path = file_entry.get("path")
             sha256 = file_entry.get("sha256")
-            if isinstance(rel_path, str) and isinstance(sha256, str):
-                if rel_path not in EXCLUDED_PACKAGE_HASH_INPUT_PATHS:
-                    canonical_files.append({"path": rel_path, "sha256": sha256})
+            if isinstance(rel_path, str) and isinstance(sha256, str) and rel_path not in EXCLUDED_PACKAGE_HASH_INPUT_PATHS:
+                canonical_files.append({"path": rel_path, "sha256": sha256})
 
     canonical = {
         "files": sorted(canonical_files, key=lambda entry: entry["path"].encode("utf-8")),
@@ -287,71 +274,38 @@ def _load_manifest(input_path: Path, result: ManifestValidationResult) -> dict[s
     if not input_path.exists():
         result.add_error("file_not_found", "Manifest file does not exist", str(input_path))
         return None
-
     try:
         manifest = json.loads(input_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         result.add_error("json_parse_error", f"Invalid manifest JSON: {exc.msg}", str(input_path))
         return None
-
     if not isinstance(manifest, dict):
         result.add_error("manifest_schema_validation_error", "Manifest JSON must be an object", str(input_path))
         return None
     return manifest
 
 
-def _validate_submission_path_identity(
-    manifest: dict[str, Any],
-    package_dir: Path,
-    path: str,
-    result: ManifestValidationResult,
-) -> None:
+def _validate_submission_path_identity(manifest: dict[str, Any], package_dir: Path, path: str, result: ManifestValidationResult) -> None:
     expected_run_id = package_dir.name
     expected_submitter_id = package_dir.parent.name
-
     actual_run_id = manifest.get("run_id")
     actual_submitter_id = manifest.get("submitter_id")
-
     if isinstance(actual_run_id, str) and actual_run_id != expected_run_id:
-        result.add_error(
-            "run_id_path_mismatch",
-            f"manifest run_id {actual_run_id!r} does not match package directory name {expected_run_id!r}",
-            path,
-        )
+        result.add_error("run_id_path_mismatch", f"manifest run_id {actual_run_id!r} does not match package directory name {expected_run_id!r}", path)
     if isinstance(actual_submitter_id, str) and actual_submitter_id != expected_submitter_id:
-        result.add_error(
-            "submitter_id_path_mismatch",
-            f"manifest submitter_id {actual_submitter_id!r} does not match parent directory name {expected_submitter_id!r}",
-            path,
-        )
+        result.add_error("submitter_id_path_mismatch", f"manifest submitter_id {actual_submitter_id!r} does not match parent directory name {expected_submitter_id!r}", path)
 
 
-def _validate_submission_manifest_includes_required_artifacts(
-    manifest: dict[str, Any],
-    path: str,
-    result: ManifestValidationResult,
-) -> None:
+def _validate_submission_manifest_includes_required_artifacts(manifest: dict[str, Any], path: str, result: ManifestValidationResult) -> None:
     files = manifest.get("files")
     if not isinstance(files, list):
         return
-    listed_paths = {
-        file_entry.get("path")
-        for file_entry in files
-        if isinstance(file_entry, dict) and isinstance(file_entry.get("path"), str)
-    }
+    listed_paths = {file_entry.get("path") for file_entry in files if isinstance(file_entry, dict) and isinstance(file_entry.get("path"), str)}
     for relative_path in sorted(REQUIRED_SUBMISSION_ARTIFACTS - listed_paths):
-        result.add_error(
-            "missing_submission_artifact",
-            f"Required submission artifact is not listed in manifest: {relative_path}",
-            path,
-        )
+        result.add_error("missing_submission_artifact", f"Required submission artifact is not listed in manifest: {relative_path}", path)
 
 
-def _validate_submission_artifacts(
-    package_dir: Path,
-    path: str,
-    result: ManifestValidationResult,
-) -> None:
+def _validate_submission_artifacts(package_dir: Path, path: str, result: ManifestValidationResult) -> None:
     for relative_path in sorted(REQUIRED_SUBMISSION_ARTIFACTS):
         artifact_path = package_dir / relative_path
         if not artifact_path.exists() or not artifact_path.is_file():
@@ -364,68 +318,64 @@ def _validate_submission_artifacts(
     run_records = _load_jsonl_objects(package_dir / "run.jsonl", result)
     if environment is None or summary is None or run_records is None:
         return
-
     if not run_records:
         result.add_error("empty_blank_results", "run.jsonl has no result records", str(package_dir / "run.jsonl"))
         return
 
+    _validate_submission_identifier_formats(package_dir, environment, result)
+    if result.failed:
+        return
     _validate_submission_artifact_identity(package_dir, environment, summary, run_records, result)
     if not result.failed:
         _validate_submission_summary_regeneration(package_dir, summary, run_records, result)
 
 
-def _validate_submission_artifact_identity(
-    package_dir: Path,
-    environment: dict[str, Any],
-    summary: dict[str, Any],
-    run_records: list[dict[str, Any]],
-    result: ManifestValidationResult,
-) -> None:
+def _validate_submission_identifier_formats(package_dir: Path, environment: dict[str, Any], result: ManifestValidationResult) -> None:
+    submitter_id = environment.get("submitter_id")
+    if not isinstance(submitter_id, str) or not SUBMITTER_ID_RE.fullmatch(submitter_id):
+        result.add_error("unsafe_slug", f"Invalid submitter_id slug: {submitter_id!r}", str(package_dir / "environment.json"))
+
+    dataset_id = environment.get("dataset_id")
+    run_id = environment.get("run_id")
+    if not isinstance(dataset_id, str) or not dataset_id:
+        result.add_error("submission_identity_mismatch", f"Invalid dataset_id for run_id validation: {dataset_id!r}", str(package_dir / "environment.json"))
+        return
+    if not isinstance(run_id, str) or not run_id.startswith(dataset_id + "-"):
+        result.add_error("run_id_invalid_format", f"run_id must start with dataset_id and hyphen: {run_id!r}", str(package_dir / "environment.json"))
+        return
+
+    suffix = run_id[len(dataset_id) + 1 :]
+    match = RUN_ID_SUFFIX_RE.fullmatch(suffix)
+    if match is None:
+        result.add_error("run_id_invalid_format", f"run_id must match <dataset_id>-YYYYMMDDTHHMMSSZ-<6..12 lowercase hex>: {run_id!r}", str(package_dir / "environment.json"))
+        return
+    try:
+        datetime.strptime(match.group("timestamp"), "%Y%m%dT%H%M%SZ")
+    except ValueError:
+        result.add_error("run_id_invalid_format", f"run_id timestamp is invalid: {run_id!r}", str(package_dir / "environment.json"))
+
+
+def _validate_submission_artifact_identity(package_dir: Path, environment: dict[str, Any], summary: dict[str, Any], run_records: list[dict[str, Any]], result: ManifestValidationResult) -> None:
     for field in IDENTITY_FIELDS:
         expected = environment.get(field)
-        summary_value = summary.get(field)
-        if summary_value != expected:
-            result.add_error(
-                "submission_identity_mismatch",
-                f"summary.{field}={summary_value!r} does not match environment.{field}={expected!r}",
-                str(package_dir / "summary.json"),
-            )
+        if summary.get(field) != expected:
+            result.add_error("submission_identity_mismatch", f"summary.{field}={summary.get(field)!r} does not match environment.{field}={expected!r}", str(package_dir / "summary.json"))
         for index, record in enumerate(run_records, start=1):
-            record_value = record.get(field)
-            if record_value != expected:
-                result.add_error(
-                    "submission_identity_mismatch",
-                    f"run.jsonl line {index} {field}={record_value!r} does not match environment.{field}={expected!r}",
-                    f"{package_dir / 'run.jsonl'}:{index}",
-                )
-
+            if record.get(field) != expected:
+                result.add_error("submission_identity_mismatch", f"run.jsonl line {index} {field}={record.get(field)!r} does not match environment.{field}={expected!r}", f"{package_dir / 'run.jsonl'}:{index}")
     result.info.append({"code": "submission_identity_checked", "message": f"Checked {len(run_records)} result record identity/identities"})
 
 
-def _validate_submission_summary_regeneration(
-    package_dir: Path,
-    summary: dict[str, Any],
-    run_records: list[dict[str, Any]],
-    result: ManifestValidationResult,
-) -> None:
+def _validate_submission_summary_regeneration(package_dir: Path, summary: dict[str, Any], run_records: list[dict[str, Any]], result: ManifestValidationResult) -> None:
     expected_summary = aggregate_result_records(run_records)
     mismatches: list[str] = []
-
     for field in SUMMARY_TOP_LEVEL_COMPARE_FIELDS:
         if not _values_equal(summary.get(field), expected_summary.get(field)):
             mismatches.append(f"{field}: actual={summary.get(field)!r} expected={expected_summary.get(field)!r}")
-
-    actual_groups = _canonical_summary_groups(summary.get("groups"))
-    expected_groups = _canonical_summary_groups(expected_summary.get("groups"))
-    if actual_groups != expected_groups:
+    if _canonical_summary_groups(summary.get("groups")) != _canonical_summary_groups(expected_summary.get("groups")):
         mismatches.append("groups: actual groups/fill_distribution do not match regenerated summary")
-
     if mismatches:
-        result.add_error(
-            "summary_regeneration_mismatch",
-            "; ".join(mismatches[:5]),
-            str(package_dir / "summary.json"),
-        )
+        result.add_error("summary_regeneration_mismatch", "; ".join(mismatches[:5]), str(package_dir / "summary.json"))
     else:
         result.info.append({"code": "summary_regeneration_checked", "message": "summary.json matches regenerated summary from run.jsonl"})
 
@@ -433,16 +383,13 @@ def _validate_submission_summary_regeneration(
 def _canonical_summary_groups(value: Any) -> list[dict[str, Any]]:
     if not isinstance(value, list):
         return []
-
     canonical_groups: list[dict[str, Any]] = []
     for group in value:
         if not isinstance(group, dict):
             continue
         canonical_group = {field: _normalize_float(group.get(field)) for field in GROUP_COMPARE_FIELDS}
-        fill_distribution = group.get("fill_distribution")
-        canonical_group["fill_distribution"] = _canonical_fill_distribution(fill_distribution)
+        canonical_group["fill_distribution"] = _canonical_fill_distribution(group.get("fill_distribution"))
         canonical_groups.append(canonical_group)
-
     return sorted(canonical_groups, key=lambda group: json.dumps(group, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
 
 
@@ -451,17 +398,14 @@ def _canonical_fill_distribution(value: Any) -> list[dict[str, Any]]:
         return []
     entries: list[dict[str, Any]] = []
     for entry in value:
-        if not isinstance(entry, dict):
-            continue
-        entries.append(
-            {
+        if isinstance(entry, dict):
+            entries.append({
                 "extracted_fill": entry.get("extracted_fill"),
                 "fill_key": entry.get("fill_key"),
                 "count": entry.get("count"),
                 "rate": _normalize_float(entry.get("rate")),
                 "fill_class": entry.get("fill_class"),
-            }
-        )
+            })
     return sorted(entries, key=lambda entry: json.dumps(entry, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
 
 
@@ -477,11 +421,7 @@ def _normalize_float(value: Any) -> Any:
     return value
 
 
-def _load_json_object(
-    input_path: Path,
-    schema_error_code: str,
-    result: ManifestValidationResult,
-) -> dict[str, Any] | None:
+def _load_json_object(input_path: Path, schema_error_code: str, result: ManifestValidationResult) -> dict[str, Any] | None:
     try:
         value = json.loads(input_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -512,16 +452,10 @@ def _load_jsonl_objects(input_path: Path, result: ManifestValidationResult) -> l
     return records
 
 
-def _validate_file_entry(
-    file_entry: dict[str, Any],
-    path: str,
-    seen_paths: set[str],
-    result: ManifestValidationResult,
-) -> None:
+def _validate_file_entry(file_entry: dict[str, Any], path: str, seen_paths: set[str], result: ManifestValidationResult) -> None:
     for field in sorted(REQUIRED_FILE_FIELDS):
         if field not in file_entry:
             result.add_error("manifest_schema_validation_error", f"Missing file field: {field}", path)
-
     rel_path = file_entry.get("path")
     if not isinstance(rel_path, str) or not rel_path:
         result.add_error("manifest_schema_validation_error", "file path must be a non-empty string", path)
@@ -532,16 +466,10 @@ def _validate_file_entry(
             result.add_error("manifest_schema_validation_error", f"Duplicate manifest file path: {rel_path}", path)
         seen_paths.add(rel_path)
         if rel_path == MANIFEST_SELF_REFERENCE_PATH:
-            result.add_error(
-                "unexpected_manifest_self_reference",
-                "manifest.json must not be listed inside its own v0 manifest file set",
-                path,
-            )
-
+            result.add_error("unexpected_manifest_self_reference", "manifest.json must not be listed inside its own v0 manifest file set", path)
     sha256 = file_entry.get("sha256")
     if not isinstance(sha256, str) or not _is_sha256_hex(sha256):
         result.add_error("manifest_schema_validation_error", "sha256 must be 64 lowercase hex characters", path)
-
     size_bytes = file_entry.get("size_bytes")
     if size_bytes is not None and (not isinstance(size_bytes, int) or size_bytes < 0):
         result.add_error("manifest_schema_validation_error", "size_bytes must be a non-negative integer or null", path)
