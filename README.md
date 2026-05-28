@@ -23,6 +23,8 @@ Currently implemented CLI commands:
 - `validate results` minimal result JSONL consistency validation
 - `aggregate` minimal result JSONL to summary JSON aggregation
 - `validate summary` minimal summary JSON validation
+- `validate manifest` minimal manifest JSON validation with optional file/package hash verification
+- `verify-integrity` minimal local submission package integrity verification
 
 Currently implemented library core:
 
@@ -30,16 +32,16 @@ Currently implemented library core:
 - result-record assembly helper
 - summary aggregation helper
 - summary JSON validation core
+- manifest JSON validation helper
+- file SHA-256 and canonical package hash verification helper
 
 Still design targets:
 
 - `run`
 - `prepare-submission`
-- `validate manifest`
 - `validate submission`
 - `validate model`
 - `validate model-repo`
-- `verify-integrity`
 - `report`
 - `collect`
 
@@ -95,11 +97,13 @@ The repository currently contains:
 - minimal `validate items` and `validate results` commands;
 - minimal `aggregate` command;
 - minimal `validate summary` command;
+- minimal `validate manifest` command;
+- minimal `verify-integrity` command;
 - strict-v0 parser/scorer core;
 - result-record assembly helper;
 - summary aggregation helper;
 - summary validation helper;
-- package-level integrity design.
+- package-level integrity design and minimal verification core.
 
 The first dataset, `smoke_v0`, is intentionally small. It is for validating the pipeline and collecting local probe statistics, not for broad model evaluation.
 
@@ -137,6 +141,13 @@ These fields prevent prompt changes, blank rendering changes, fallback extractio
 `manifest.json` is for package-level tamper detection of publishable submissions. It can detect later changes to submitted files. It does not verify model execution.
 
 `manifest.json` is required for publishable submissions under `submissions/<submitter_id>/<run_id>/`. Local scratch results under `results/` may omit it, but they should be treated as unverified.
+
+Current minimal commands:
+
+```bash
+llmclozestat validate manifest --input manifest.json --verify-files
+llmclozestat verify-integrity --path submissions/<submitter_id>/<run_id>
+```
 
 ## What this is not
 
@@ -218,33 +229,3 @@ This is self-reported measurement data. For large or repeated result collection,
 - `docs/model_repository.md` — model.toml metadata and one-model repository rules
 - `docs/model_repository_usage.md` — practical model repository setup and changing-model guide
 - `docs/ci_policy.md` — CI validation, PR classification, report generation, and size policy
-- `docs/implementation_plan.md` — recommended implementation phases and exit criteria
-- `docs/submitter_identity.md` — submitter_id/run_id naming, collision avoidance, and PR identity policy
-- `docs/error_codes.md` — stable validation error and warning code registry
-- `docs/fixtures.md` — fixture layout, valid/invalid fixture policy, and expected-failure metadata
-- `docs/problem_data_policy.md` — rules for authoring probe items
-- `docs/prompting.md` — prompt templates, support modes, and output contract
-- `docs/fill_class_policy.md` — fill_class vocabulary and content_pass policy
-- `docs/parser_scoring.md` — deterministic extraction and scoring rules
-- `docs/parser_fixture_policy.md` — parser/scorer fixture expectations for Phase 2
-- `docs/result_format.md` — raw result JSONL and aggregate format
-- `docs/validation.md` — validation layers, severity, and command design
-- `docs/integrity.md` — package-level integrity and tamper detection
-- `docs/cli_usage.md` — intended CLI workflow and command shapes
-- `schemas/README.md` — schema purpose and validation stance
-
-## Early development plan
-
-1. Finalize item/result formats.
-2. Implement parser and scorer.
-3. Implement basic aggregation.
-4. Add validation for item/result/summary files.
-5. Add package manifest and local integrity verification.
-6. Add OpenAI-compatible runner for LM Studio and similar local servers.
-7. Add lightweight terminal progress display.
-8. Add Markdown report generation.
-
-## License
-
-- Code: Apache-2.0
-- Dataset/docs: see `DATA_LICENSE.md`
