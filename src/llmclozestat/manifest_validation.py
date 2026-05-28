@@ -112,6 +112,8 @@ def validate_submission_manifest(package_dir: Path) -> ManifestValidationResult:
     if not result.failed:
         _validate_submission_path_identity(manifest, package_dir, str(manifest_path), result)
     if not result.failed:
+        _validate_submission_manifest_includes_required_artifacts(manifest, str(manifest_path), result)
+    if not result.failed:
         verify_manifest_integrity(manifest, package_dir, str(manifest_path), result)
     if not result.failed:
         _validate_submission_artifact_identity(package_dir, str(manifest_path), result)
@@ -282,6 +284,27 @@ def _validate_submission_path_identity(
         result.add_error(
             "submitter_id_path_mismatch",
             f"manifest submitter_id {actual_submitter_id!r} does not match parent directory name {expected_submitter_id!r}",
+            path,
+        )
+
+
+def _validate_submission_manifest_includes_required_artifacts(
+    manifest: dict[str, Any],
+    path: str,
+    result: ManifestValidationResult,
+) -> None:
+    files = manifest.get("files")
+    if not isinstance(files, list):
+        return
+    listed_paths = {
+        file_entry.get("path")
+        for file_entry in files
+        if isinstance(file_entry, dict) and isinstance(file_entry.get("path"), str)
+    }
+    for relative_path in sorted(REQUIRED_SUBMISSION_ARTIFACTS - listed_paths):
+        result.add_error(
+            "missing_submission_artifact",
+            f"Required submission artifact is not listed in manifest: {relative_path}",
             path,
         )
 
