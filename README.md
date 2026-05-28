@@ -23,7 +23,9 @@ Currently implemented CLI commands:
 - `validate results` minimal result JSONL consistency validation
 - `aggregate` minimal result JSONL to summary JSON aggregation
 - `validate summary` minimal summary JSON validation
+- `prepare-submission` minimal artifact copy and manifest writing
 - `validate manifest` minimal manifest JSON validation with optional file/package hash verification
+- `validate submission` minimal local submission package integrity validation
 - `verify-integrity` minimal local submission package integrity verification
 
 Currently implemented library core:
@@ -34,12 +36,11 @@ Currently implemented library core:
 - summary JSON validation core
 - manifest JSON validation helper
 - file SHA-256 and canonical package hash verification helper
+- prepare-submission package helper
 
 Still design targets:
 
 - `run`
-- `prepare-submission`
-- `validate submission`
 - `validate model`
 - `validate model-repo`
 - `report`
@@ -97,13 +98,15 @@ The repository currently contains:
 - minimal `validate items` and `validate results` commands;
 - minimal `aggregate` command;
 - minimal `validate summary` command;
+- minimal `prepare-submission` command;
 - minimal `validate manifest` command;
+- minimal `validate submission` command;
 - minimal `verify-integrity` command;
 - strict-v0 parser/scorer core;
 - result-record assembly helper;
 - summary aggregation helper;
 - summary validation helper;
-- package-level integrity design and minimal verification core.
+- package-level integrity design, manifest generation, and minimal verification core.
 
 The first dataset, `smoke_v0`, is intentionally small. It is for validating the pipeline and collecting local probe statistics, not for broad model evaluation.
 
@@ -145,8 +148,18 @@ These fields prevent prompt changes, blank rendering changes, fallback extractio
 Current minimal commands:
 
 ```bash
-llmclozestat validate manifest --input manifest.json --verify-files
-llmclozestat verify-integrity --path submissions/<submitter_id>/<run_id>
+llmclozestat prepare-submission \
+  --submitter-id local-user \
+  --run-id smoke-v0-local-run \
+  --environment-json results/smoke/environment.json \
+  --run-jsonl results/smoke/run.jsonl \
+  --summary-json results/smoke/summary.json \
+  --summary-md results/smoke/summary.md \
+  --out-dir submissions/local-user/smoke-v0-local-run
+
+llmclozestat validate manifest --input submissions/local-user/smoke-v0-local-run/manifest.json --verify-files
+llmclozestat validate submission --path submissions/local-user/smoke-v0-local-run
+llmclozestat verify-integrity --path submissions/local-user/smoke-v0-local-run
 ```
 
 ## What this is not
