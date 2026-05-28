@@ -10,8 +10,16 @@ build/
 # Local environment
 .env
 .env.*
+!.env.example
 
-# Local run outputs
+# Local datasets and run outputs
+data/
+runs/
+submissions/*/*/environment.json
+submissions/*/*/run.jsonl
+submissions/*/*/summary.json
+submissions/*/*/manifest.json
+reports/*.csv
 results/*
 !results/.gitkeep
 
