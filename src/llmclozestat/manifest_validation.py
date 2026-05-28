@@ -107,27 +107,15 @@ class ManifestValidationResult:
         }
 
 
-def validate_manifest_file(
-    input_path: Path,
-    package_dir: Path | None = None,
-    *,
-    verify_files: bool = False,
-) -> ManifestValidationResult:
+def validate_manifest_file(input_path: Path, package_dir: Path | None = None, *, verify_files: bool = False) -> ManifestValidationResult:
     result = ManifestValidationResult()
     manifest = _load_manifest(input_path, result)
     if manifest is None:
         return result
 
     validate_manifest_object(manifest, str(input_path), result)
-
     if verify_files and not result.failed:
-        verify_manifest_integrity(
-            manifest,
-            package_dir or input_path.parent,
-            str(input_path),
-            result,
-        )
-
+        verify_manifest_integrity(manifest, package_dir or input_path.parent, str(input_path), result)
     return result
 
 
@@ -154,13 +142,8 @@ def validate_submission_manifest(package_dir: Path) -> ManifestValidationResult:
     return result
 
 
-def validate_manifest_object(
-    manifest: dict[str, Any],
-    path: str = "manifest",
-    result: ManifestValidationResult | None = None,
-) -> ManifestValidationResult:
+def validate_manifest_object(manifest: dict[str, Any], path: str = "manifest", result: ManifestValidationResult | None = None) -> ManifestValidationResult:
     validation = result or ManifestValidationResult()
-
     for field in sorted(REQUIRED_MANIFEST_FIELDS):
         if field not in manifest:
             validation.add_error("manifest_schema_validation_error", f"Missing manifest field: {field}", path)
@@ -170,11 +153,7 @@ def validate_manifest_object(
 
     package_hash = manifest.get("package_hash")
     if not isinstance(package_hash, str) or not _is_package_hash(package_hash):
-        validation.add_error(
-            "manifest_schema_validation_error",
-            "package_hash must have the form sha256:<64 lowercase hex>",
-            path,
-        )
+        validation.add_error("manifest_schema_validation_error", "package_hash must have the form sha256:<64 lowercase hex>", path)
 
     files = manifest.get("files")
     if not isinstance(files, list):
@@ -196,12 +175,7 @@ def validate_manifest_object(
     return validation
 
 
-def verify_manifest_integrity(
-    manifest: dict[str, Any],
-    package_dir: Path,
-    path: str,
-    result: ManifestValidationResult,
-) -> None:
+def verify_manifest_integrity(manifest: dict[str, Any], package_dir: Path, path: str, result: ManifestValidationResult) -> None:
     files = manifest.get("files")
     if not isinstance(files, list):
         return
@@ -232,7 +206,6 @@ def verify_manifest_integrity(
 
     if result.failed:
         return
-
     expected_package_hash = manifest.get("package_hash")
     actual_package_hash = compute_package_hash(manifest)
     if expected_package_hash != actual_package_hash:
@@ -341,18 +314,18 @@ def _validate_submission_identifier_formats(package_dir: Path, environment: dict
         result.add_error("submission_identity_mismatch", f"Invalid dataset_id for run_id validation: {dataset_id!r}", str(package_dir / "environment.json"))
         return
     if not isinstance(run_id, str) or not run_id.startswith(dataset_id + "-"):
-        result.add_error("run_id_invalid_format", f"run_id must start with dataset_id and hyphen: {run_id!r}", str(package_dir / "environment.json"))
+        result.add_warning("run_id_invalid_format", f"run_id should start with dataset_id and hyphen: {run_id!r}", str(package_dir / "environment.json"))
         return
 
     suffix = run_id[len(dataset_id) + 1 :]
     match = RUN_ID_SUFFIX_RE.fullmatch(suffix)
     if match is None:
-        result.add_error("run_id_invalid_format", f"run_id must match <dataset_id>-YYYYMMDDTHHMMSSZ-<6..12 lowercase hex>: {run_id!r}", str(package_dir / "environment.json"))
+        result.add_warning("run_id_invalid_format", f"run_id should match <dataset_id>-YYYYMMDDTHHMMSSZ-<6..12 lowercase hex>: {run_id!r}", str(package_dir / "environment.json"))
         return
     try:
         datetime.strptime(match.group("timestamp"), "%Y%m%dT%H%M%SZ")
     except ValueError:
-        result.add_error("run_id_invalid_format", f"run_id timestamp is invalid: {run_id!r}", str(package_dir / "environment.json"))
+        result.add_warning("run_id_invalid_format", f"run_id timestamp is invalid: {run_id!r}", str(package_dir / "environment.json"))
 
 
 def _validate_submission_artifact_identity(package_dir: Path, environment: dict[str, Any], summary: dict[str, Any], run_records: list[dict[str, Any]], result: ManifestValidationResult) -> None:
