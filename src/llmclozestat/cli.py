@@ -9,6 +9,7 @@ from llmclozestat.aggregation import write_summary_file
 from llmclozestat.item_validation import validate_items_file
 from llmclozestat.manifest_validation import validate_manifest_file, validate_submission_manifest
 from llmclozestat.result_validation import validate_results_file
+from llmclozestat.submission import PrepareSubmissionError, prepare_submission_package
 from llmclozestat.summary_validation import validate_summary_file
 
 app = typer.Typer(help="Cloze-based statistical profiling for LLM outputs.")
@@ -30,6 +31,37 @@ def aggregate(
 ) -> None:
     summary = write_summary_file(input_path, out)
     typer.echo(json.dumps({"status": "passed", "summary_path": str(out), "n_trials": summary["n_trials"]}, ensure_ascii=False))
+
+
+@app.command("prepare-submission")
+def prepare_submission(
+    submitter_id: str = typer.Option(..., "--submitter-id", help="Submitter identifier for the package manifest."),
+    run_id: str = typer.Option(..., "--run-id", help="Run identifier for the package manifest."),
+    environment_json: Path = typer.Option(..., "--environment-json", exists=False, file_okay=True, dir_okay=False),
+    run_jsonl: Path = typer.Option(..., "--run-jsonl", exists=False, file_okay=True, dir_okay=False),
+    summary_json: Path = typer.Option(..., "--summary-json", exists=False, file_okay=True, dir_okay=False),
+    out_dir: Path = typer.Option(..., "--out-dir", exists=False, file_okay=False, dir_okay=True),
+    summary_md: Path | None = typer.Option(None, "--summary-md", exists=False, file_okay=True, dir_okay=False),
+    write_manifest: bool = typer.Option(True, "--write-manifest/--no-write-manifest"),
+    overwrite: bool = typer.Option(False, "--overwrite", help="Allow writing into a non-empty output directory."),
+) -> None:
+    try:
+        result = prepare_submission_package(
+            submitter_id=submitter_id,
+            run_id=run_id,
+            environment_json=environment_json,
+            run_jsonl=run_jsonl,
+            summary_json=summary_json,
+            summary_md=summary_md,
+            out_dir=out_dir,
+            write_manifest=write_manifest,
+            overwrite=overwrite,
+        )
+    except PrepareSubmissionError as exc:
+        typer.echo(json.dumps({"status": "failed", "errors": [{"code": "prepare_submission_error", "message": str(exc)}]}, ensure_ascii=False, indent=2))
+        raise typer.Exit(code=1) from exc
+
+    typer.echo(json.dumps(result, ensure_ascii=False, indent=2))
 
 
 @app.command("verify-integrity")
