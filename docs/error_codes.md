@@ -172,6 +172,13 @@ These are the first implementation target.
 | `wrong_package_hash` | ERROR | Per-file hashes may match but `package_hash` is wrong |
 | `manifest_identity_mismatch` | ERROR | Manifest submitter/run fields do not match path or environment |
 
+## Submission semantic validation codes
+
+| Code | Severity | Meaning |
+|---|---:|---|
+| `missing_submission_artifact` | ERROR | Required `environment.json`, `run.jsonl`, or `summary.json` is absent from a submission package |
+| `submission_identity_mismatch` | ERROR | `environment.json`, `run.jsonl`, and `summary.json` disagree on submitter/run/dataset/model identity |
+
 ## Prepare-submission codes
 
 | Code | Severity | Meaning |
