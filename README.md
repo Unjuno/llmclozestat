@@ -20,10 +20,11 @@ Currently implemented CLI commands:
 
 - `version`
 - `validate items` minimal item JSONL validation
+- `validate environment` minimal environment JSON validation
 - `validate results` minimal result JSONL consistency validation
 - `aggregate` minimal result JSONL to summary JSON aggregation
 - `validate summary` minimal summary JSON validation
-- `prepare-submission` minimal artifact copy and manifest writing
+- `prepare-submission` minimal source validation, artifact copy, and manifest writing
 - `validate manifest` minimal manifest JSON validation with optional file/package hash verification
 - `validate submission` minimal local submission package integrity validation
 - `verify-integrity` minimal local submission package integrity verification
@@ -32,11 +33,12 @@ Currently implemented library core:
 
 - strict-v0 parser/scorer pure function core
 - result-record assembly helper
+- environment JSON validation helper
 - summary aggregation helper
 - summary JSON validation core
 - manifest JSON validation helper
 - file SHA-256 and canonical package hash verification helper
-- prepare-submission package helper
+- prepare-submission package helper with source artifact validation
 
 Still design targets:
 
@@ -95,10 +97,10 @@ The repository currently contains:
 - parser/scorer and result-format specifications;
 - fill-class policy;
 - fixture policy and parser/result/summary aggregation fixtures;
-- minimal `validate items` and `validate results` commands;
+- minimal `validate items`, `validate environment`, and `validate results` commands;
 - minimal `aggregate` command;
 - minimal `validate summary` command;
-- minimal `prepare-submission` command;
+- minimal `prepare-submission` command with source artifact validation;
 - minimal `validate manifest` command;
 - minimal `validate submission` command;
 - minimal `verify-integrity` command;
@@ -148,6 +150,11 @@ These fields prevent prompt changes, blank rendering changes, fallback extractio
 Current minimal commands:
 
 ```bash
+llmclozestat validate environment --input results/smoke/environment.json
+llmclozestat validate results --input results/smoke/run.jsonl
+llmclozestat aggregate --input results/smoke/run.jsonl --out results/smoke/summary.json
+llmclozestat validate summary --input results/smoke/summary.json
+
 llmclozestat prepare-submission \
   --submitter-id local-user \
   --run-id smoke-v0-local-run \
@@ -161,6 +168,8 @@ llmclozestat validate manifest --input submissions/local-user/smoke-v0-local-run
 llmclozestat validate submission --path submissions/local-user/smoke-v0-local-run
 llmclozestat verify-integrity --path submissions/local-user/smoke-v0-local-run
 ```
+
+`prepare-submission` validates the source `environment.json`, `run.jsonl`, and `summary.json` before copying them by default. Use `--no-validate-sources` only for scratch/debug packaging, not for publishable submissions.
 
 ## What this is not
 
