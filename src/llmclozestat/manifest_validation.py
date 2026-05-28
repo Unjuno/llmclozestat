@@ -25,6 +25,8 @@ REQUIRED_MANIFEST_FIELDS = {
     "package_hash_input",
 }
 REQUIRED_FILE_FIELDS = {"path", "sha256"}
+REQUIRED_SUBMISSION_ARTIFACTS = {"environment.json", "run.jsonl", "summary.json"}
+IDENTITY_FIELDS = ("submitter_id", "run_id", "dataset_id", "model_id")
 
 
 @dataclass(frozen=True)
@@ -111,6 +113,8 @@ def validate_submission_manifest(package_dir: Path) -> ManifestValidationResult:
         _validate_submission_path_identity(manifest, package_dir, str(manifest_path), result)
     if not result.failed:
         verify_manifest_integrity(manifest, package_dir, str(manifest_path), result)
+    if not result.failed:
+        _validate_submission_artifact_identity(package_dir, str(manifest_path), result)
     return result
 
 
@@ -280,6 +284,84 @@ def _validate_submission_path_identity(
             f"manifest submitter_id {actual_submitter_id!r} does not match parent directory name {expected_submitter_id!r}",
             path,
         )
+
+
+def _validate_submission_artifact_identity(
+    package_dir: Path,
+    path: str,
+    result: ManifestValidationResult,
+) -> None:
+    for relative_path in sorted(REQUIRED_SUBMISSION_ARTIFACTS):
+        artifact_path = package_dir / relative_path
+        if not artifact_path.exists() or not artifact_path.is_file():
+            result.add_error("missing_submission_artifact", f"Missing required submission artifact: {relative_path}", path)
+    if result.failed:
+        return
+
+    environment = _load_json_object(package_dir / "environment.json", "environment_schema_validation_error", result)
+    summary = _load_json_object(package_dir / "summary.json", "summary_schema_validation_error", result)
+    run_records = _load_jsonl_objects(package_dir / "run.jsonl", result)
+    if environment is None or summary is None or run_records is None:
+        return
+
+    if not run_records:
+        result.add_error("empty_blank_results", "run.jsonl has no result records", str(package_dir / "run.jsonl"))
+        return
+
+    for field in IDENTITY_FIELDS:
+        expected = environment.get(field)
+        summary_value = summary.get(field)
+        if summary_value != expected:
+            result.add_error(
+                "submission_identity_mismatch",
+                f"summary.{field}={summary_value!r} does not match environment.{field}={expected!r}",
+                str(package_dir / "summary.json"),
+            )
+        for index, record in enumerate(run_records, start=1):
+            record_value = record.get(field)
+            if record_value != expected:
+                result.add_error(
+                    "submission_identity_mismatch",
+                    f"run.jsonl line {index} {field}={record_value!r} does not match environment.{field}={expected!r}",
+                    f"{package_dir / 'run.jsonl'}:{index}",
+                )
+
+    result.info.append({"code": "submission_identity_checked", "message": f"Checked {len(run_records)} result record identity/identities"})
+
+
+def _load_json_object(
+    input_path: Path,
+    schema_error_code: str,
+    result: ManifestValidationResult,
+) -> dict[str, Any] | None:
+    try:
+        value = json.loads(input_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        result.add_error("json_parse_error", f"Invalid JSON: {exc.msg}", str(input_path))
+        return None
+    if not isinstance(value, dict):
+        result.add_error(schema_error_code, "JSON artifact must be an object", str(input_path))
+        return None
+    return value
+
+
+def _load_jsonl_objects(input_path: Path, result: ManifestValidationResult) -> list[dict[str, Any]] | None:
+    records: list[dict[str, Any]] = []
+    with input_path.open("r", encoding="utf-8") as handle:
+        for line_number, line in enumerate(handle, start=1):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                value = json.loads(stripped)
+            except json.JSONDecodeError as exc:
+                result.add_error("json_parse_error", f"Invalid JSONL line: {exc.msg}", f"{input_path}:{line_number}")
+                return None
+            if not isinstance(value, dict):
+                result.add_error("schema_validation_error", "JSONL line must be an object", f"{input_path}:{line_number}")
+                return None
+            records.append(value)
+    return records
 
 
 def _validate_file_entry(
