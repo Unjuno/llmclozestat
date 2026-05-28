@@ -65,3 +65,13 @@ def validate_results(
     typer.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
     if result.failed:
         raise typer.Exit(code=1)
+
+
+@validate_app.command("summary")
+def validate_summary(
+    input_path: Path = typer.Option(..., "--input", exists=False, file_okay=True, dir_okay=False),
+) -> None:
+    result = validate_summary_file(input_path)
+    typer.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
+    if result.failed:
+        raise typer.Exit(code=1)
