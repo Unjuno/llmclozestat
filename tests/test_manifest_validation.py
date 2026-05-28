@@ -25,7 +25,7 @@ class ManifestValidationTests(unittest.TestCase):
             run_path.write_text('{"trial_id":"trial-1"}\n', encoding="utf-8")
             summary_path.write_text('{"summary_version":"summary_v0"}\n', encoding="utf-8")
 
-            manifest = _build_single_file_manifest(
+            manifest = _build_manifest(
                 package_dir=package_dir,
                 submitter_id="local-user",
                 run_id="fixture-run",
@@ -41,12 +41,12 @@ class ManifestValidationTests(unittest.TestCase):
         with TemporaryDirectory() as temp_dir:
             package_dir = Path(temp_dir) / "submissions" / "local-user" / "fixture-run"
             package_dir.mkdir(parents=True)
-            (package_dir / "run.jsonl").write_text('{"trial_id":"trial-1"}\n', encoding="utf-8")
-            manifest = _build_single_file_manifest(
+            _write_identity_artifacts(package_dir)
+            manifest = _build_manifest(
                 package_dir=package_dir,
                 submitter_id="local-user",
                 run_id="fixture-run",
-                paths=["run.jsonl"],
+                paths=["environment.json", "run.jsonl", "summary.json"],
             )
             (package_dir / "manifest.json").write_text(json.dumps(manifest) + "\n", encoding="utf-8")
 
@@ -57,12 +57,12 @@ class ManifestValidationTests(unittest.TestCase):
         with TemporaryDirectory() as temp_dir:
             package_dir = Path(temp_dir) / "submissions" / "other-user" / "other-run"
             package_dir.mkdir(parents=True)
-            (package_dir / "run.jsonl").write_text('{"trial_id":"trial-1"}\n', encoding="utf-8")
-            manifest = _build_single_file_manifest(
+            _write_identity_artifacts(package_dir)
+            manifest = _build_manifest(
                 package_dir=package_dir,
                 submitter_id="local-user",
                 run_id="fixture-run",
-                paths=["run.jsonl"],
+                paths=["environment.json", "run.jsonl", "summary.json"],
             )
             (package_dir / "manifest.json").write_text(json.dumps(manifest) + "\n", encoding="utf-8")
 
@@ -71,6 +71,45 @@ class ManifestValidationTests(unittest.TestCase):
             error_codes = {error.code for error in result.errors}
             self.assertIn("submitter_id_path_mismatch", error_codes)
             self.assertIn("run_id_path_mismatch", error_codes)
+
+    def test_submission_artifact_identity_mismatch_fails_with_matching_hashes(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            package_dir = Path(temp_dir) / "submissions" / "local-user" / "fixture-run"
+            package_dir.mkdir(parents=True)
+            _write_identity_artifacts(package_dir)
+            summary = json.loads((package_dir / "summary.json").read_text(encoding="utf-8"))
+            summary["dataset_id"] = "other_dataset"
+            (package_dir / "summary.json").write_text(json.dumps(summary) + "\n", encoding="utf-8")
+
+            manifest = _build_manifest(
+                package_dir=package_dir,
+                submitter_id="local-user",
+                run_id="fixture-run",
+                paths=["environment.json", "run.jsonl", "summary.json"],
+            )
+            (package_dir / "manifest.json").write_text(json.dumps(manifest) + "\n", encoding="utf-8")
+
+            result = validate_submission_manifest(package_dir)
+            self.assertTrue(result.failed, result.to_dict())
+            self.assertIn("submission_identity_mismatch", {error.code for error in result.errors})
+
+    def test_missing_required_submission_artifact_fails(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            package_dir = Path(temp_dir) / "submissions" / "local-user" / "fixture-run"
+            package_dir.mkdir(parents=True)
+            _write_identity_artifacts(package_dir)
+            (package_dir / "summary.json").unlink()
+            manifest = _build_manifest(
+                package_dir=package_dir,
+                submitter_id="local-user",
+                run_id="fixture-run",
+                paths=["environment.json", "run.jsonl"],
+            )
+            (package_dir / "manifest.json").write_text(json.dumps(manifest) + "\n", encoding="utf-8")
+
+            result = validate_submission_manifest(package_dir)
+            self.assertTrue(result.failed, result.to_dict())
+            self.assertIn("missing_submission_artifact", {error.code for error in result.errors})
 
     def test_wrong_file_hash_fails(self) -> None:
         with TemporaryDirectory() as temp_dir:
@@ -146,7 +185,33 @@ class ManifestValidationTests(unittest.TestCase):
             self.assertIn("missing_manifest", {error.code for error in result.errors})
 
 
-def _build_single_file_manifest(
+def _write_identity_artifacts(package_dir: Path) -> None:
+    environment = {
+        "submitter_id": "local-user",
+        "run_id": "fixture-run",
+        "dataset_id": "fixture_dataset",
+        "model_id": "fixture-model",
+    }
+    run_record = {
+        "submitter_id": "local-user",
+        "run_id": "fixture-run",
+        "dataset_id": "fixture_dataset",
+        "model_id": "fixture-model",
+        "trial_id": 1,
+    }
+    summary = {
+        "summary_version": "summary_v0",
+        "submitter_id": "local-user",
+        "run_id": "fixture-run",
+        "dataset_id": "fixture_dataset",
+        "model_id": "fixture-model",
+    }
+    (package_dir / "environment.json").write_text(json.dumps(environment) + "\n", encoding="utf-8")
+    (package_dir / "run.jsonl").write_text(json.dumps(run_record) + "\n", encoding="utf-8")
+    (package_dir / "summary.json").write_text(json.dumps(summary) + "\n", encoding="utf-8")
+
+
+def _build_manifest(
     *,
     package_dir: Path,
     submitter_id: str,
