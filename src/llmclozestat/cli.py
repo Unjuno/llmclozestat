@@ -6,6 +6,7 @@ from pathlib import Path
 import typer
 
 from llmclozestat.aggregation import write_summary_file
+from llmclozestat.environment_validation import validate_environment_file
 from llmclozestat.item_validation import validate_items_file
 from llmclozestat.manifest_validation import validate_manifest_file, validate_submission_manifest
 from llmclozestat.result_validation import validate_results_file
@@ -13,7 +14,7 @@ from llmclozestat.submission import PrepareSubmissionError, prepare_submission_p
 from llmclozestat.summary_validation import validate_summary_file
 
 app = typer.Typer(help="Cloze-based statistical profiling for LLM outputs.")
-validate_app = typer.Typer(help="Validate datasets, results, summaries, manifests, and submissions.")
+validate_app = typer.Typer(help="Validate datasets, results, summaries, manifests, environments, and submissions.")
 app.add_typer(validate_app, name="validate")
 
 
@@ -44,6 +45,7 @@ def prepare_submission(
     summary_md: Path | None = typer.Option(None, "--summary-md", exists=False, file_okay=True, dir_okay=False),
     write_manifest: bool = typer.Option(True, "--write-manifest/--no-write-manifest"),
     overwrite: bool = typer.Option(False, "--overwrite", help="Allow writing into a non-empty output directory."),
+    validate_sources: bool = typer.Option(True, "--validate-sources/--no-validate-sources", help="Validate environment/run/summary before copying."),
 ) -> None:
     try:
         result = prepare_submission_package(
@@ -56,6 +58,7 @@ def prepare_submission(
             out_dir=out_dir,
             write_manifest=write_manifest,
             overwrite=overwrite,
+            validate_sources=validate_sources,
         )
     except PrepareSubmissionError as exc:
         typer.echo(json.dumps({"status": "failed", "errors": [{"code": "prepare_submission_error", "message": str(exc)}]}, ensure_ascii=False, indent=2))
@@ -76,6 +79,16 @@ def verify_integrity(
     ),
 ) -> None:
     result = validate_submission_manifest(path)
+    typer.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
+    if result.failed:
+        raise typer.Exit(code=1)
+
+
+@validate_app.command("environment")
+def validate_environment(
+    input_path: Path = typer.Option(..., "--input", exists=False, file_okay=True, dir_okay=False),
+) -> None:
+    result = validate_environment_file(input_path)
     typer.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
     if result.failed:
         raise typer.Exit(code=1)
