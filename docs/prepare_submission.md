@@ -39,6 +39,30 @@ If the target directory already exists, fail unless a later explicit resume or o
 
 The command should create parent directories when needed.
 
+## Preserve mistakes and failed artifacts
+
+Do not delete failed outputs, rejected intermediate files, or notes about earlier mistakes merely because a later corrected artifact exists.
+
+Mistakes are useful diagnostic data for:
+
+```text
+implementation debugging
+CI regression analysis
+validator design
+reproducibility review
+```
+
+For MVP, `prepare-submission` should not copy arbitrary local scratch files into the publishable package. However, documentation should preserve known mistakes and unresolved issues in docs or test fixtures instead of silently rewriting history.
+
+Later versions may support an explicit non-publishable diagnostics area such as:
+
+```text
+results/<run_id>/notes.md
+results/<run_id>/failed/
+```
+
+Publishable submissions should remain minimal and validated.
+
 ## Validation expectation
 
 Before preparing a publishable package, users should run:
