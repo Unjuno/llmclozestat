@@ -1,20 +1,18 @@
 # Template Quickstart
 
-Goal:
-
-Clone this repository, change a small number of settings, and obtain reproducible statistical measurements for one model.
+Goal: clone this repository, change a small number of settings, and obtain reproducible statistical measurements for one model.
 
 This repository is intentionally designed around:
 
 - one repository = one model identity;
 - fixed prompt conditions;
 - explicit metadata;
-- reproducible run outputs;
-- validation before aggregation.
+- submission packages under `submissions/<submitter_id>/<run_id>/`;
+- validation before report generation.
 
 ---
 
-# 1. Clone
+## 1. Clone
 
 ```bash
 git clone https://github.com/YOUR_NAME/llmclozestat.git
@@ -23,7 +21,7 @@ cd llmclozestat
 
 ---
 
-# 2. Create Python environment
+## 2. Create Python environment
 
 ```bash
 python -m venv .venv
@@ -50,7 +48,7 @@ pip install -e .
 
 ---
 
-# 3. Configure API key
+## 3. Configure API key
 
 Copy:
 
@@ -64,11 +62,17 @@ Set:
 OPENAI_API_KEY=...
 ```
 
-For LM Studio / llama.cpp OpenAI-compatible servers, many servers accept any non-empty dummy value.
+For local OpenAI-compatible servers such as LM Studio or llama.cpp, many servers accept any non-empty dummy value.
 
 ---
 
-# 4. Configure model identity
+## 4. Configure model identity
+
+Copy:
+
+```bash
+cp model.toml.example model.toml
+```
 
 Edit:
 
@@ -76,7 +80,7 @@ Edit:
 model.toml
 ```
 
-You must set at least:
+At minimum, set:
 
 ```toml
 [model]
@@ -86,15 +90,16 @@ source = "huggingface-or-local"
 source_repo = "..."
 revision = "..."
 quantization = "..."
-backend = "vllm-or-lmstudio-or-openai"
+backend = "lmstudio-or-llama.cpp-or-vllm-or-openai"
 ```
 
 Important:
 
-- One repository should represent one model identity.
-- Do not mix different model IDs in the same repository.
+- one repository should represent one model identity;
+- do not mix different model IDs in the same repository;
+- keep prompt/generation/parser defaults stable unless the run is intentionally a new condition.
 
-Validation:
+Validate:
 
 ```bash
 llmclozestat validate model --input model.toml
@@ -102,7 +107,7 @@ llmclozestat validate model --input model.toml
 
 ---
 
-# 5. Configure run
+## 5. Configure run
 
 Copy:
 
@@ -115,6 +120,7 @@ Edit:
 ```toml
 [run]
 submitter_id = "your-name"
+output_dir = "submissions"
 
 [backend]
 model_name = "your-backend-model-name"
@@ -135,15 +141,15 @@ llama.cpp server:
 base_url = "http://localhost:8080/v1"
 ```
 
-OpenAI:
+OpenAI API:
 
-- omit `base_url`
-- set `model_name`
-- set `OPENAI_API_KEY`
+- omit `base_url`;
+- set `model_name`;
+- set `OPENAI_API_KEY`.
 
 ---
 
-# 6. Validate dataset
+## 6. Validate dataset
 
 ```bash
 llmclozestat validate items --dataset datasets/smoke_v0/items.jsonl
@@ -151,7 +157,7 @@ llmclozestat validate items --dataset datasets/smoke_v0/items.jsonl
 
 ---
 
-# 7. Run measurement
+## 7. Run measurement
 
 ```bash
 llmclozestat run --config run.toml
@@ -160,34 +166,38 @@ llmclozestat run --config run.toml
 Generated files:
 
 ```text
-runs/<run_id>/environment.json
-runs/<run_id>/run.jsonl
-runs/<run_id>/summary.json
+submissions/<submitter_id>/<run_id>/environment.json
+submissions/<submitter_id>/<run_id>/run.jsonl
+submissions/<submitter_id>/<run_id>/summary.json
+submissions/<submitter_id>/<run_id>/manifest.json
 ```
+
+The command output includes the concrete `submission_path`.
 
 ---
 
-# 8. Validate outputs
+## 8. Validate output package
 
 ```bash
-llmclozestat validate submission --path runs/<run_id>
+llmclozestat validate submission --path submissions/<submitter_id>/<run_id>
 ```
 
 This checks:
 
-- environment schema;
-- result schema;
-- summary schema;
-- identity consistency;
+- manifest presence;
+- file hashes;
+- package hash;
+- path identity;
+- environment/run/summary identity consistency;
 - regenerated summary consistency.
 
 ---
 
-# 9. Generate CSV reports
+## 9. Generate CSV reports
 
 ```bash
 llmclozestat report \
-  --submissions-dir runs \
+  --submissions-dir submissions \
   --out-dir reports
 ```
 
@@ -200,7 +210,7 @@ reports/blank_fills.csv
 
 ---
 
-# Recommended initial workflow
+## Recommended initial workflow
 
 Start with:
 
@@ -213,4 +223,5 @@ Do not:
 
 - silently change prompts per model;
 - mix incompatible prompt conditions;
-- compare runs with different prompt metadata as if they were identical.
+- compare runs with different prompt metadata as if they were identical;
+- commit private API keys or local `.env` files.
