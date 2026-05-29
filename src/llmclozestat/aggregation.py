@@ -29,6 +29,8 @@ TOP_LEVEL_IDENTITY_FIELDS = (
     "run_id",
     "dataset_id",
     "dataset_sha256",
+    "condition_hash",
+    "experiment_hash",
     "model_id",
 )
 
@@ -66,6 +68,8 @@ def aggregate_result_records(records: list[dict[str, Any]]) -> dict[str, Any]:
         "run_id": identity.get("run_id", ""),
         "dataset_id": identity.get("dataset_id", ""),
         "dataset_sha256": identity.get("dataset_sha256", ""),
+        "condition_hash": identity.get("condition_hash", ""),
+        "experiment_hash": identity.get("experiment_hash", ""),
         "model_id": identity.get("model_id", ""),
         "n_trials": n_trials,
         "content_pass_rate": _blank_rate(records, "content_pass"),
