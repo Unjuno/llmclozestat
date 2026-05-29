@@ -11,6 +11,7 @@ REQUIRED_ENVIRONMENT_FIELDS = {
     "run_id",
     "tool_version",
     "dataset_id",
+    "dataset_sha256",
     "model_id",
     "backend",
     "provider",
@@ -22,7 +23,6 @@ REQUIRED_ENVIRONMENT_FIELDS = {
     "parser_config",
     "generation_config",
 }
-
 SUPPORTED_SUPPORT_MODES = {"zero", "format_shot", "task_shot", "control_shot", "mixed_shot"}
 SUPPORTED_EXTRACTION_MODES = {"exact_full_text", "segment", "fallback_answer_phrase"}
 
@@ -80,11 +80,7 @@ def validate_environment_file(input_path: Path) -> EnvironmentValidationResult:
     return result
 
 
-def validate_environment_object(
-    environment: dict[str, Any],
-    path: str = "environment",
-    result: EnvironmentValidationResult | None = None,
-) -> EnvironmentValidationResult:
+def validate_environment_object(environment: dict[str, Any], path: str = "environment", result: EnvironmentValidationResult | None = None) -> EnvironmentValidationResult:
     validation = result or EnvironmentValidationResult()
 
     for field in sorted(REQUIRED_ENVIRONMENT_FIELDS):
@@ -95,6 +91,7 @@ def validate_environment_object(
     _validate_non_empty_string(environment, "run_id", path, validation)
     _validate_non_empty_string(environment, "tool_version", path, validation)
     _validate_non_empty_string(environment, "dataset_id", path, validation)
+    _validate_sha256(environment, "dataset_sha256", path, validation)
     _validate_non_empty_string(environment, "model_id", path, validation)
     _validate_non_empty_string(environment, "backend", path, validation)
     _validate_non_empty_string(environment, "provider", path, validation)
@@ -131,11 +128,7 @@ def validate_environment_object(
     return validation
 
 
-def _validate_parser_config(
-    parser_config: dict[str, Any],
-    path: str,
-    result: EnvironmentValidationResult,
-) -> None:
+def _validate_parser_config(parser_config: dict[str, Any], path: str, result: EnvironmentValidationResult) -> None:
     normalization = parser_config.get("normalization")
     if not isinstance(normalization, str) or not normalization:
         result.add_error("environment_schema_validation_error", "parser_config.normalization must be a non-empty string", path)
@@ -158,11 +151,7 @@ def _validate_parser_config(
         seen_modes.add(mode)
 
 
-def _validate_generation_config(
-    generation_config: dict[str, Any],
-    path: str,
-    result: EnvironmentValidationResult,
-) -> None:
+def _validate_generation_config(generation_config: dict[str, Any], path: str, result: EnvironmentValidationResult) -> None:
     if "temperature" not in generation_config:
         result.add_error("environment_schema_validation_error", "generation_config.temperature is required", path)
     temperature = generation_config.get("temperature")
@@ -178,12 +167,18 @@ def _validate_generation_config(
         result.add_error("environment_schema_validation_error", "generation_config.top_p must be null or a number in [0, 1]", path)
 
 
-def _validate_non_empty_string(
-    obj: dict[str, Any],
-    field: str,
-    path: str,
-    result: EnvironmentValidationResult,
-) -> None:
+def _validate_non_empty_string(obj: dict[str, Any], field: str, path: str, result: EnvironmentValidationResult) -> None:
     value = obj.get(field)
     if not isinstance(value, str) or not value:
         result.add_error("environment_schema_validation_error", f"{field} must be a non-empty string", path)
+
+
+def _validate_sha256(obj: dict[str, Any], field: str, path: str, result: EnvironmentValidationResult) -> None:
+    value = obj.get(field)
+    prefix = "sha256:"
+    if not isinstance(value, str) or not value.startswith(prefix):
+        result.add_error("environment_schema_validation_error", f"{field} must have the form sha256:<64 lowercase hex>", path)
+        return
+    digest = value[len(prefix) :]
+    if len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest):
+        result.add_error("environment_schema_validation_error", f"{field} must have the form sha256:<64 lowercase hex>", path)
