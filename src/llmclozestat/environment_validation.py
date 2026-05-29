@@ -21,11 +21,19 @@ REQUIRED_ENVIRONMENT_FIELDS = {
     "support_mode",
     "f_shot",
     "blank_rendering",
+    "prompt_condition_hash",
     "parser_config",
     "parser_config_hash",
     "generation_config",
     "generation_config_hash",
 }
+PROMPT_CONDITION_FIELDS = (
+    "prompt_template_id",
+    "prompt_language",
+    "support_mode",
+    "f_shot",
+    "blank_rendering",
+)
 SUPPORTED_SUPPORT_MODES = {"zero", "format_shot", "task_shot", "control_shot", "mixed_shot"}
 SUPPORTED_EXTRACTION_MODES = {"exact_full_text", "segment", "fallback_answer_phrase"}
 
@@ -100,6 +108,7 @@ def validate_environment_object(environment: dict[str, Any], path: str = "enviro
     _validate_non_empty_string(environment, "provider", path, validation)
     _validate_non_empty_string(environment, "prompt_template_id", path, validation)
     _validate_non_empty_string(environment, "blank_rendering", path, validation)
+    _validate_sha256(environment, "prompt_condition_hash", path, validation)
     _validate_sha256(environment, "parser_config_hash", path, validation)
     _validate_sha256(environment, "generation_config_hash", path, validation)
 
@@ -116,6 +125,14 @@ def validate_environment_object(environment: dict[str, Any], path: str = "enviro
         validation.add_error("environment_schema_validation_error", "f_shot must be a non-negative integer", path)
     if support_mode == "zero" and f_shot != 0:
         validation.add_error("zero_support_mode_with_f_shot", "support_mode zero requires f_shot = 0", path)
+
+    expected_prompt_hash = _hash_json(_prompt_condition(environment))
+    if environment.get("prompt_condition_hash") != expected_prompt_hash:
+        validation.add_error(
+            "environment_schema_validation_error",
+            f"prompt_condition_hash does not match prompt condition fields: expected {expected_prompt_hash}",
+            path,
+        )
 
     parser_config = environment.get("parser_config")
     if not isinstance(parser_config, dict):
@@ -184,6 +201,10 @@ def _validate_generation_config(generation_config: dict[str, Any], path: str, re
     top_p = generation_config.get("top_p")
     if top_p is not None and (not isinstance(top_p, (int, float)) or top_p < 0 or top_p > 1):
         result.add_error("environment_schema_validation_error", "generation_config.top_p must be null or a number in [0, 1]", path)
+
+
+def _prompt_condition(environment: dict[str, Any]) -> dict[str, Any]:
+    return {field: environment.get(field) for field in PROMPT_CONDITION_FIELDS}
 
 
 def _validate_non_empty_string(obj: dict[str, Any], field: str, path: str, result: EnvironmentValidationResult) -> None:
