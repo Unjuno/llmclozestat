@@ -31,7 +31,7 @@ REQUIRED_MANIFEST_FIELDS = {
 }
 REQUIRED_FILE_FIELDS = {"path", "sha256"}
 REQUIRED_SUBMISSION_ARTIFACTS = {"environment.json", "run.jsonl", "summary.json"}
-IDENTITY_FIELDS = ("submitter_id", "run_id", "dataset_id", "model_id")
+IDENTITY_FIELDS = ("submitter_id", "run_id", "dataset_id", "dataset_sha256", "model_id")
 SUBMITTER_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,38}$")
 RUN_ID_SUFFIX_RE = re.compile(r"^(?P<timestamp>\d{8}T\d{6}Z)-(?P<random>[0-9a-f]{6,12})$")
 SUMMARY_TOP_LEVEL_COMPARE_FIELDS = (
@@ -39,6 +39,7 @@ SUMMARY_TOP_LEVEL_COMPARE_FIELDS = (
     "submitter_id",
     "run_id",
     "dataset_id",
+    "dataset_sha256",
     "model_id",
     "n_trials",
     "content_pass_rate",
