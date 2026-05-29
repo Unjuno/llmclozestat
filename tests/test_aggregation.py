@@ -18,6 +18,7 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(summary["submitter_id"], "local-user")
         self.assertEqual(summary["run_id"], "summary-fixture-run")
         self.assertEqual(summary["dataset_id"], "fixture_dataset")
+        self.assertEqual(summary["dataset_sha256"], "")
         self.assertEqual(summary["model_id"], "fixture-model")
         self.assertEqual(summary["n_trials"], 4)
 
