@@ -17,6 +17,7 @@
   "support_mode": "zero",
   "f_shot": 0,
   "blank_rendering": "（　　　）",
+  "prompt_condition_hash": "sha256:c524a507491ce9a13520c55b4d6bd554da373361f80ced1a16e020cebdd76580",
   "parser_config": {
     "normalization": "v0_minimal",
     "extraction_modes_enabled": [
