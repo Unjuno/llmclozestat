@@ -76,12 +76,14 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
         "extraction_modes_enabled": ["exact_full_text", "segment"],
     }
 
+    parser_config_hash = _hash_json(parser_cfg)
     generation_config_hash = _hash_json(generation_cfg)
     environment = _build_environment(
         submitter_id=submitter_id,
         run_id=run_id,
         dataset_id=dataset_id,
         dataset_sha256=dataset_sha256,
+        parser_config_hash=parser_config_hash,
         generation_config_hash=generation_config_hash,
         model=model_cfg,
         backend=backend,
@@ -122,6 +124,8 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
                     "support_mode": str(prompt_cfg.get("support_mode", "zero")),
                     "f_shot": int(prompt_cfg.get("f_shot", 0)),
                     "blank_rendering": _required_str(prompt_cfg, "blank_rendering", "prompt"),
+                    "parser_config": parser_cfg,
+                    "parser_config_hash": parser_config_hash,
                     "generation_config": generation_cfg,
                     "generation_config_hash": generation_config_hash,
                 }
@@ -140,6 +144,7 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
         "summary_json": str(summary_path),
         "manifest_json": str(manifest_path),
         "dataset_sha256": dataset_sha256,
+        "parser_config_hash": parser_config_hash,
         "generation_config_hash": generation_config_hash,
         "n_trials": summary.get("n_trials"),
     }
@@ -234,6 +239,7 @@ def _build_environment(
     run_id: str,
     dataset_id: str,
     dataset_sha256: str,
+    parser_config_hash: str,
     generation_config_hash: str,
     model: dict[str, Any],
     backend: dict[str, Any],
@@ -256,6 +262,7 @@ def _build_environment(
         "f_shot": int(prompt.get("f_shot", 0)),
         "blank_rendering": _required_str(prompt, "blank_rendering", "prompt"),
         "parser_config": parser,
+        "parser_config_hash": parser_config_hash,
         "generation_config": generation,
         "generation_config_hash": generation_config_hash,
     }
