@@ -116,6 +116,27 @@ class ManifestValidationTests(unittest.TestCase):
             self.assertTrue(result.failed, result.to_dict())
             self.assertIn("summary_regeneration_mismatch", {error.code for error in result.errors})
 
+    def test_submission_summary_dataset_hash_mismatch_fails_with_matching_hashes(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            package_dir = Path(temp_dir) / "submissions" / "local-user" / "fixture-run"
+            package_dir.mkdir(parents=True)
+            _write_identity_artifacts(package_dir)
+            summary = json.loads((package_dir / "summary.json").read_text(encoding="utf-8"))
+            summary["dataset_sha256"] = "sha256:" + "f" * 64
+            (package_dir / "summary.json").write_text(json.dumps(summary) + "\n", encoding="utf-8")
+
+            manifest = _build_manifest(
+                package_dir=package_dir,
+                submitter_id="local-user",
+                run_id="fixture-run",
+                paths=["environment.json", "run.jsonl", "summary.json"],
+            )
+            (package_dir / "manifest.json").write_text(json.dumps(manifest) + "\n", encoding="utf-8")
+
+            result = validate_submission_manifest(package_dir)
+            self.assertTrue(result.failed, result.to_dict())
+            self.assertIn("summary_regeneration_mismatch", {error.code for error in result.errors})
+
     def test_missing_required_submission_artifact_fails(self) -> None:
         with TemporaryDirectory() as temp_dir:
             package_dir = Path(temp_dir) / "submissions" / "local-user" / "fixture-run"
