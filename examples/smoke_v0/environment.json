@@ -3,6 +3,7 @@
   "run_id": "smoke-v0-example-20260526",
   "tool_version": "0.0.1",
   "dataset_id": "smoke_v0",
+  "dataset_sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "dataset_version": "0.0.1",
   "model_id": "example-model",
   "model_source": null,
