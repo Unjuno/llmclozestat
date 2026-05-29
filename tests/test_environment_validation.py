@@ -97,6 +97,52 @@ class EnvironmentValidationTests(unittest.TestCase):
             self.assertTrue(result.failed, result.to_dict())
             self.assertIn("environment_schema_validation_error", {error.code for error in result.errors})
 
+    def test_condition_hash_mismatch_fails(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "environment.json"
+            environment = json.loads(EXAMPLE_ENVIRONMENT.read_text(encoding="utf-8"))
+            environment["dataset_sha256"] = "sha256:" + "b" * 64
+            path.write_text(json.dumps(environment) + "\n", encoding="utf-8")
+
+            result = validate_environment_file(path)
+            self.assertTrue(result.failed, result.to_dict())
+            messages = "\n".join(error.message for error in result.errors)
+            self.assertIn("condition_hash does not match dataset/prompt/parser/generation hashes", messages)
+
+    def test_invalid_condition_hash_format_fails(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "environment.json"
+            environment = json.loads(EXAMPLE_ENVIRONMENT.read_text(encoding="utf-8"))
+            environment["condition_hash"] = "sha256:BAD"
+            path.write_text(json.dumps(environment) + "\n", encoding="utf-8")
+
+            result = validate_environment_file(path)
+            self.assertTrue(result.failed, result.to_dict())
+            self.assertIn("environment_schema_validation_error", {error.code for error in result.errors})
+
+    def test_experiment_hash_mismatch_fails(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "environment.json"
+            environment = json.loads(EXAMPLE_ENVIRONMENT.read_text(encoding="utf-8"))
+            environment["model_id"] = "other-model"
+            path.write_text(json.dumps(environment) + "\n", encoding="utf-8")
+
+            result = validate_environment_file(path)
+            self.assertTrue(result.failed, result.to_dict())
+            messages = "\n".join(error.message for error in result.errors)
+            self.assertIn("experiment_hash does not match condition/model/backend/provider fields", messages)
+
+    def test_invalid_experiment_hash_format_fails(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "environment.json"
+            environment = json.loads(EXAMPLE_ENVIRONMENT.read_text(encoding="utf-8"))
+            environment["experiment_hash"] = "sha256:BAD"
+            path.write_text(json.dumps(environment) + "\n", encoding="utf-8")
+
+            result = validate_environment_file(path)
+            self.assertTrue(result.failed, result.to_dict())
+            self.assertIn("environment_schema_validation_error", {error.code for error in result.errors})
+
     def test_zero_support_mode_requires_zero_f_shot(self) -> None:
         with TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "environment.json"
