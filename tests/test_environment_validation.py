@@ -28,6 +28,29 @@ class EnvironmentValidationTests(unittest.TestCase):
             self.assertTrue(result.failed, result.to_dict())
             self.assertIn("environment_schema_validation_error", {error.code for error in result.errors})
 
+    def test_parser_config_hash_mismatch_fails(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "environment.json"
+            environment = json.loads(EXAMPLE_ENVIRONMENT.read_text(encoding="utf-8"))
+            environment["parser_config"]["fallback_extraction_enabled"] = True
+            path.write_text(json.dumps(environment) + "\n", encoding="utf-8")
+
+            result = validate_environment_file(path)
+            self.assertTrue(result.failed, result.to_dict())
+            messages = "\n".join(error.message for error in result.errors)
+            self.assertIn("parser_config_hash does not match parser_config", messages)
+
+    def test_invalid_parser_config_hash_format_fails(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "environment.json"
+            environment = json.loads(EXAMPLE_ENVIRONMENT.read_text(encoding="utf-8"))
+            environment["parser_config_hash"] = "sha256:BAD"
+            path.write_text(json.dumps(environment) + "\n", encoding="utf-8")
+
+            result = validate_environment_file(path)
+            self.assertTrue(result.failed, result.to_dict())
+            self.assertIn("environment_schema_validation_error", {error.code for error in result.errors})
+
     def test_generation_config_hash_mismatch_fails(self) -> None:
         with TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "environment.json"
