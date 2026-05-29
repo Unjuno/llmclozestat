@@ -82,6 +82,7 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
         run_id=run_id,
         dataset_id=dataset_id,
         dataset_sha256=dataset_sha256,
+        generation_config_hash=generation_config_hash,
         model=model_cfg,
         backend=backend,
         prompt=prompt_cfg,
@@ -139,6 +140,7 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
         "summary_json": str(summary_path),
         "manifest_json": str(manifest_path),
         "dataset_sha256": dataset_sha256,
+        "generation_config_hash": generation_config_hash,
         "n_trials": summary.get("n_trials"),
     }
 
@@ -232,6 +234,7 @@ def _build_environment(
     run_id: str,
     dataset_id: str,
     dataset_sha256: str,
+    generation_config_hash: str,
     model: dict[str, Any],
     backend: dict[str, Any],
     prompt: dict[str, Any],
@@ -254,6 +257,7 @@ def _build_environment(
         "blank_rendering": _required_str(prompt, "blank_rendering", "prompt"),
         "parser_config": parser,
         "generation_config": generation,
+        "generation_config_hash": generation_config_hash,
     }
 
 
