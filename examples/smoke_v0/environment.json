@@ -38,6 +38,8 @@
     "stop": []
   },
   "generation_config_hash": "sha256:972c22112d39dce4e82ce1b0b1192f18b787ac42f56847c82e5c2f1866c82ac3",
+  "condition_hash": "sha256:d3e0c0a01051d5957a09e526fa94ef7bfbc262a3f4162350a4e5ebde31e509fa",
+  "experiment_hash": "sha256:2e78c55ade984e14730e53a2705acbdb1a77a76c85861aaf6f7251426fabe491",
   "os": null,
   "hardware": null,
   "notes": "Schema-compliant reference example only. This is not a real benchmark result."
