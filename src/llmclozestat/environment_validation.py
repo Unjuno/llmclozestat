@@ -22,6 +22,7 @@ REQUIRED_ENVIRONMENT_FIELDS = {
     "f_shot",
     "blank_rendering",
     "parser_config",
+    "parser_config_hash",
     "generation_config",
     "generation_config_hash",
 }
@@ -99,6 +100,7 @@ def validate_environment_object(environment: dict[str, Any], path: str = "enviro
     _validate_non_empty_string(environment, "provider", path, validation)
     _validate_non_empty_string(environment, "prompt_template_id", path, validation)
     _validate_non_empty_string(environment, "blank_rendering", path, validation)
+    _validate_sha256(environment, "parser_config_hash", path, validation)
     _validate_sha256(environment, "generation_config_hash", path, validation)
 
     prompt_language = environment.get("prompt_language")
@@ -120,6 +122,13 @@ def validate_environment_object(environment: dict[str, Any], path: str = "enviro
         validation.add_error("environment_schema_validation_error", "parser_config must be an object", path)
     else:
         _validate_parser_config(parser_config, f"{path}:parser_config", validation)
+        expected_hash = _hash_json(parser_config)
+        if environment.get("parser_config_hash") != expected_hash:
+            validation.add_error(
+                "environment_schema_validation_error",
+                f"parser_config_hash does not match parser_config: expected {expected_hash}",
+                path,
+            )
 
     generation_config = environment.get("generation_config")
     if not isinstance(generation_config, dict):
