@@ -49,6 +49,7 @@ class RunnerTests(unittest.TestCase):
 
             self.assertEqual(result["status"], "passed")
             self.assertEqual(result["run_id"], "smoke_v0-20260528T120000Z-a1b2c3")
+            self.assertTrue(result["dataset_sha256"].startswith("sha256:"))
             submission_path = Path(result["submission_path"])
             self.assertEqual(submission_path, root / "submissions" / "user-a" / "smoke_v0-20260528T120000Z-a1b2c3")
 
@@ -60,11 +61,13 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(environment["run_id"], "smoke_v0-20260528T120000Z-a1b2c3")
             self.assertEqual(environment["dataset_id"], "smoke_v0")
             self.assertEqual(environment["model_id"], "model-a")
+            self.assertTrue(environment["dataset_sha256"].startswith("sha256:"))
 
             run_records = [json.loads(line) for line in (submission_path / "run.jsonl").read_text(encoding="utf-8").splitlines()]
             self.assertEqual(len(run_records), 1)
             self.assertTrue(run_records[0]["item_strict_pass"])
             self.assertEqual(run_records[0]["blank_results"][0]["extracted_fill"], "右")
+            self.assertTrue(run_records[0]["metadata"]["dataset_sha256"].startswith("sha256:"))
 
             validation = validate_submission_manifest(submission_path)
             self.assertFalse(validation.failed, validation.to_dict())
