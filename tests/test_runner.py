@@ -11,6 +11,14 @@ from llmclozestat.runner import render_item_text, render_prompt, run_from_config
 
 
 EXPECTED_FULL_TEXT = "あなたが鏡の前で現実の右手を上げる。鏡の中の像で上がっている手は、現実のあなたの右手に対応する。"
+HASH_FIELDS = [
+    "dataset_sha256",
+    "prompt_condition_hash",
+    "parser_config_hash",
+    "generation_config_hash",
+    "condition_hash",
+    "experiment_hash",
+]
 
 
 class RunnerTests(unittest.TestCase):
@@ -49,7 +57,8 @@ class RunnerTests(unittest.TestCase):
 
             self.assertEqual(result["status"], "passed")
             self.assertEqual(result["run_id"], "smoke_v0-20260528T120000Z-a1b2c3")
-            self.assertTrue(result["dataset_sha256"].startswith("sha256:"))
+            _assert_hash_fields(result)
+
             submission_path = Path(result["submission_path"])
             self.assertEqual(submission_path, root / "submissions" / "user-a" / "smoke_v0-20260528T120000Z-a1b2c3")
 
@@ -61,16 +70,28 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(environment["run_id"], "smoke_v0-20260528T120000Z-a1b2c3")
             self.assertEqual(environment["dataset_id"], "smoke_v0")
             self.assertEqual(environment["model_id"], "model-a")
-            self.assertTrue(environment["dataset_sha256"].startswith("sha256:"))
+            _assert_hash_fields(environment)
 
             run_records = [json.loads(line) for line in (submission_path / "run.jsonl").read_text(encoding="utf-8").splitlines()]
             self.assertEqual(len(run_records), 1)
             self.assertTrue(run_records[0]["item_strict_pass"])
             self.assertEqual(run_records[0]["blank_results"][0]["extracted_fill"], "右")
-            self.assertTrue(run_records[0]["metadata"]["dataset_sha256"].startswith("sha256:"))
+            _assert_hash_fields(run_records[0]["metadata"])
+
+            for field in HASH_FIELDS:
+                self.assertEqual(environment[field], run_records[0]["metadata"][field], field)
+                self.assertEqual(environment[field], result[field], field)
 
             validation = validate_submission_manifest(submission_path)
             self.assertFalse(validation.failed, validation.to_dict())
+
+
+def _assert_hash_fields(obj: dict[str, object]) -> None:
+    for field in HASH_FIELDS:
+        value = obj.get(field)
+        assert isinstance(value, str), field
+        assert value.startswith("sha256:"), field
+        assert len(value) == len("sha256:") + 64, field
 
 
 def _write_project_files(root: Path) -> None:
