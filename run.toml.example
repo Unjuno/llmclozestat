@@ -1,0 +1,41 @@
+[run]
+# Lowercase slug used in submissions/<submitter_id>/<run_id>/.
+submitter_id = "your-name"
+
+# Omit run_id to auto-generate:
+# <dataset_id>-YYYYMMDDTHHMMSSZ-<6 lowercase hex>
+# run_id = "smoke_v0-20260528T120000Z-a1b2c3"
+
+dataset_path = "datasets/smoke_v0/items.jsonl"
+trials_per_item = 1
+
+# run writes directly to submissions/<submitter_id>/<run_id>/.
+output_dir = "submissions"
+overwrite = false
+model_toml = "model.toml"
+
+[backend]
+type = "openai_compatible"
+provider = "local-or-vendor"
+api_key_env = "OPENAI_API_KEY"
+model_name = "replace-with-backend-model-name"
+# base_url = "http://localhost:1234/v1"
+
+[prompt]
+prompt_template_id = "fill_full_sentence_v1.ja"
+prompt_language = "ja"
+support_mode = "zero"
+f_shot = 0
+blank_rendering = "（　　　）"
+
+[generation]
+temperature = 0
+top_p = 1.0
+seed = 1
+max_tokens = 64
+stop = []
+
+[parser]
+normalization = "v0_minimal"
+extraction_modes_enabled = ["exact_full_text", "segment"]
+fallback_extraction_enabled = false
