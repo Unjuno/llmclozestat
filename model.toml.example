@@ -1,0 +1,20 @@
+[model]
+model_id = "example-model-q4km"
+family = "example-family"
+source = "local"
+source_repo = "https://huggingface.co/example/model"
+revision = "main"
+quantization = "q4_k_m"
+backend = "lmstudio"
+backend_version = "unknown"
+
+[policy]
+one_model_repo = true
+allow_mixed_model_ids = false
+
+[default_condition.prompt]
+prompt_template_id = "fill_full_sentence_v1.ja"
+prompt_language = "ja"
+support_mode = "zero"
+f_shot = 0
+blank_rendering = "（　　　）"
