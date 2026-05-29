@@ -45,6 +45,7 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
 
     dataset_path = _resolve(root, _required_str(run_cfg, "dataset_path", "run"))
     _ensure_valid_items(dataset_path)
+    dataset_sha256 = _sha256_file(dataset_path)
     items = _load_items(dataset_path)
     if not items:
         raise RunConfigurationError(f"dataset has no items: {dataset_path}")
@@ -80,6 +81,7 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
         submitter_id=submitter_id,
         run_id=run_id,
         dataset_id=dataset_id,
+        dataset_sha256=dataset_sha256,
         model=model_cfg,
         backend=backend,
         prompt=prompt_cfg,
@@ -106,6 +108,7 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
                     "submitter_id": submitter_id,
                     "run_id": run_id,
                     "dataset_id": dataset_id,
+                    "dataset_sha256": dataset_sha256,
                     "model_id": _required_str(model_cfg, "model_id", "model"),
                     "model_source": model_cfg.get("source"),
                     "quantization": model_cfg.get("quantization"),
@@ -135,6 +138,7 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
         "run_jsonl": str(run_jsonl_path),
         "summary_json": str(summary_path),
         "manifest_json": str(manifest_path),
+        "dataset_sha256": dataset_sha256,
         "n_trials": summary.get("n_trials"),
     }
 
@@ -227,6 +231,7 @@ def _build_environment(
     submitter_id: str,
     run_id: str,
     dataset_id: str,
+    dataset_sha256: str,
     model: dict[str, Any],
     backend: dict[str, Any],
     prompt: dict[str, Any],
@@ -238,6 +243,7 @@ def _build_environment(
         "run_id": run_id,
         "tool_version": __version__,
         "dataset_id": dataset_id,
+        "dataset_sha256": dataset_sha256,
         "model_id": _required_str(model, "model_id", "model"),
         "backend": _required_str(model, "backend", "model"),
         "provider": str(backend.get("provider", backend.get("type", "openai_compatible"))),
@@ -273,6 +279,14 @@ def _generate_run_id(dataset_id: str) -> str:
 def _hash_json(value: Any) -> str:
     encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return "sha256:" + hashlib.sha256(encoded).hexdigest()
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return "sha256:" + digest.hexdigest()
 
 
 def _load_toml(path: Path) -> dict[str, Any]:
