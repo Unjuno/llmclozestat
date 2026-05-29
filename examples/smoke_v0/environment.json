@@ -26,6 +26,7 @@
     "unicode_width_normalization": false,
     "fallback_extraction_enabled": false
   },
+  "parser_config_hash": "sha256:8a5a451842408e3521687af45d06fda711d2b7a649cfb88c507579e97f4d29be",
   "generation_config": {
     "temperature": 0,
     "top_p": null,
