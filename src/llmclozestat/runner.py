@@ -18,7 +18,9 @@ from openai import OpenAI
 
 from llmclozestat import __version__
 from llmclozestat.aggregation import write_summary_file
+from llmclozestat.manifest_validation import validate_manifest_file
 from llmclozestat.result_record import build_result_record
+from llmclozestat.submission import build_manifest
 
 
 class RunConfigurationError(ValueError):
@@ -54,10 +56,10 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
     if trials_per_item < 1:
         raise RunConfigurationError("run.trials_per_item must be >= 1")
 
-    out_root = _resolve(root, str(run_cfg.get("output_dir", "runs")))
-    run_dir = out_root / run_id
+    output_root = _resolve(root, str(run_cfg.get("output_dir", "submissions")))
+    run_dir = output_root / submitter_id / run_id
     if run_dir.exists() and any(run_dir.iterdir()) and not bool(run_cfg.get("overwrite", False)):
-        raise RunExecutionError(f"output run directory is not empty: {run_dir}")
+        raise RunExecutionError(f"output submission directory is not empty: {run_dir}")
     run_dir.mkdir(parents=True, exist_ok=True)
 
     backend = _table(config, "backend")
@@ -119,13 +121,15 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
 
     summary_path = run_dir / "summary.json"
     summary = write_summary_file(run_jsonl_path, summary_path)
+    manifest_path = _write_manifest(run_dir, submitter_id, run_id)
     return {
         "status": "passed",
         "run_id": run_id,
-        "run_dir": str(run_dir),
+        "submission_path": str(run_dir),
         "environment_json": str(environment_path),
         "run_jsonl": str(run_jsonl_path),
         "summary_json": str(summary_path),
+        "manifest_json": str(manifest_path),
         "n_trials": summary.get("n_trials"),
     }
 
@@ -155,6 +159,21 @@ def render_item_text(item: dict[str, Any], blank_rendering: str) -> str:
         if index < len(blanks):
             parts.append(blank_rendering)
     return "".join(parts)
+
+
+def _write_manifest(run_dir: Path, submitter_id: str, run_id: str) -> Path:
+    manifest = build_manifest(
+        submitter_id=submitter_id,
+        run_id=run_id,
+        package_dir=run_dir,
+        relative_paths=["environment.json", "run.jsonl", "summary.json"],
+    )
+    manifest_path = run_dir / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    validation = validate_manifest_file(manifest_path, package_dir=run_dir, verify_files=True)
+    if validation.failed:
+        raise RunExecutionError(f"generated manifest failed verification: {validation.to_dict()}")
+    return manifest_path
 
 
 def _call_chat_completion(client: OpenAI, model_name: str, prompt_text: str, generation: dict[str, Any]) -> str:
