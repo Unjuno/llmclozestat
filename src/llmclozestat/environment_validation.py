@@ -26,6 +26,8 @@ REQUIRED_ENVIRONMENT_FIELDS = {
     "parser_config_hash",
     "generation_config",
     "generation_config_hash",
+    "condition_hash",
+    "experiment_hash",
 }
 PROMPT_CONDITION_FIELDS = (
     "prompt_template_id",
@@ -33,6 +35,18 @@ PROMPT_CONDITION_FIELDS = (
     "support_mode",
     "f_shot",
     "blank_rendering",
+)
+CONDITION_HASH_FIELDS = (
+    "dataset_sha256",
+    "prompt_condition_hash",
+    "parser_config_hash",
+    "generation_config_hash",
+)
+EXPERIMENT_HASH_FIELDS = (
+    "condition_hash",
+    "model_id",
+    "backend",
+    "provider",
 )
 SUPPORTED_SUPPORT_MODES = {"zero", "format_shot", "task_shot", "control_shot", "mixed_shot"}
 SUPPORTED_EXTRACTION_MODES = {"exact_full_text", "segment", "fallback_answer_phrase"}
@@ -111,6 +125,8 @@ def validate_environment_object(environment: dict[str, Any], path: str = "enviro
     _validate_sha256(environment, "prompt_condition_hash", path, validation)
     _validate_sha256(environment, "parser_config_hash", path, validation)
     _validate_sha256(environment, "generation_config_hash", path, validation)
+    _validate_sha256(environment, "condition_hash", path, validation)
+    _validate_sha256(environment, "experiment_hash", path, validation)
 
     prompt_language = environment.get("prompt_language")
     if not isinstance(prompt_language, str) or len(prompt_language) < 2:
@@ -160,6 +176,22 @@ def validate_environment_object(environment: dict[str, Any], path: str = "enviro
                 path,
             )
 
+    expected_condition_hash = _hash_json(_condition_hash_input(environment))
+    if environment.get("condition_hash") != expected_condition_hash:
+        validation.add_error(
+            "environment_schema_validation_error",
+            f"condition_hash does not match dataset/prompt/parser/generation hashes: expected {expected_condition_hash}",
+            path,
+        )
+
+    expected_experiment_hash = _hash_json(_experiment_hash_input(environment))
+    if environment.get("experiment_hash") != expected_experiment_hash:
+        validation.add_error(
+            "environment_schema_validation_error",
+            f"experiment_hash does not match condition/model/backend/provider fields: expected {expected_experiment_hash}",
+            path,
+        )
+
     validation.info.append({"code": "environment_validated", "message": "Validated one environment object"})
     return validation
 
@@ -205,6 +237,14 @@ def _validate_generation_config(generation_config: dict[str, Any], path: str, re
 
 def _prompt_condition(environment: dict[str, Any]) -> dict[str, Any]:
     return {field: environment.get(field) for field in PROMPT_CONDITION_FIELDS}
+
+
+def _condition_hash_input(environment: dict[str, Any]) -> dict[str, Any]:
+    return {field: environment.get(field) for field in CONDITION_HASH_FIELDS}
+
+
+def _experiment_hash_input(environment: dict[str, Any]) -> dict[str, Any]:
+    return {field: environment.get(field) for field in EXPERIMENT_HASH_FIELDS}
 
 
 def _validate_non_empty_string(obj: dict[str, Any], field: str, path: str, result: EnvironmentValidationResult) -> None:
