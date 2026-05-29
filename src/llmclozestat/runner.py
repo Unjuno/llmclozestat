@@ -18,7 +18,9 @@ from openai import OpenAI
 
 from llmclozestat import __version__
 from llmclozestat.aggregation import write_summary_file
+from llmclozestat.item_validation import validate_items_file
 from llmclozestat.manifest_validation import validate_manifest_file
+from llmclozestat.model_validation import validate_model_file
 from llmclozestat.result_record import build_result_record
 from llmclozestat.submission import build_manifest
 
@@ -36,10 +38,13 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
     root = config_path.parent
 
     run_cfg = _table(config, "run")
-    model_toml = _load_toml(_resolve(root, str(run_cfg.get("model_toml", "model.toml"))))
+    model_path = _resolve(root, str(run_cfg.get("model_toml", "model.toml")))
+    _ensure_valid_model(model_path)
+    model_toml = _load_toml(model_path)
     model_cfg = _table(model_toml, "model")
 
     dataset_path = _resolve(root, _required_str(run_cfg, "dataset_path", "run"))
+    _ensure_valid_items(dataset_path)
     items = _load_items(dataset_path)
     if not items:
         raise RunConfigurationError(f"dataset has no items: {dataset_path}")
@@ -159,6 +164,18 @@ def render_item_text(item: dict[str, Any], blank_rendering: str) -> str:
         if index < len(blanks):
             parts.append(blank_rendering)
     return "".join(parts)
+
+
+def _ensure_valid_items(dataset_path: Path) -> None:
+    result = validate_items_file(dataset_path)
+    if result.failed:
+        raise RunConfigurationError(f"dataset failed validation: {result.to_dict()}")
+
+
+def _ensure_valid_model(model_path: Path) -> None:
+    result = validate_model_file(model_path)
+    if result.failed:
+        raise RunConfigurationError(f"model metadata failed validation: {result.to_dict()}")
 
 
 def _write_manifest(run_dir: Path, submitter_id: str, run_id: str) -> Path:
