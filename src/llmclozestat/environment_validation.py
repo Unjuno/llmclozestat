@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,6 +23,7 @@ REQUIRED_ENVIRONMENT_FIELDS = {
     "blank_rendering",
     "parser_config",
     "generation_config",
+    "generation_config_hash",
 }
 SUPPORTED_SUPPORT_MODES = {"zero", "format_shot", "task_shot", "control_shot", "mixed_shot"}
 SUPPORTED_EXTRACTION_MODES = {"exact_full_text", "segment", "fallback_answer_phrase"}
@@ -97,6 +99,7 @@ def validate_environment_object(environment: dict[str, Any], path: str = "enviro
     _validate_non_empty_string(environment, "provider", path, validation)
     _validate_non_empty_string(environment, "prompt_template_id", path, validation)
     _validate_non_empty_string(environment, "blank_rendering", path, validation)
+    _validate_sha256(environment, "generation_config_hash", path, validation)
 
     prompt_language = environment.get("prompt_language")
     if not isinstance(prompt_language, str) or len(prompt_language) < 2:
@@ -123,6 +126,13 @@ def validate_environment_object(environment: dict[str, Any], path: str = "enviro
         validation.add_error("environment_schema_validation_error", "generation_config must be an object", path)
     else:
         _validate_generation_config(generation_config, f"{path}:generation_config", validation)
+        expected_hash = _hash_json(generation_config)
+        if environment.get("generation_config_hash") != expected_hash:
+            validation.add_error(
+                "environment_schema_validation_error",
+                f"generation_config_hash does not match generation_config: expected {expected_hash}",
+                path,
+            )
 
     validation.info.append({"code": "environment_validated", "message": "Validated one environment object"})
     return validation
@@ -182,3 +192,8 @@ def _validate_sha256(obj: dict[str, Any], field: str, path: str, result: Environ
     digest = value[len(prefix) :]
     if len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest):
         result.add_error("environment_schema_validation_error", f"{field} must have the form sha256:<64 lowercase hex>", path)
+
+
+def _hash_json(value: Any) -> str:
+    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
