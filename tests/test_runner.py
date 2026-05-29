@@ -73,28 +73,7 @@ class RunnerTests(unittest.TestCase):
 def _write_project_files(root: Path) -> None:
     dataset_dir = root / "datasets" / "smoke_v0"
     dataset_dir.mkdir(parents=True)
-    item = {
-        "dataset_id": "smoke_v0",
-        "probe_id": "probe-a",
-        "variant_id": "variant-a.ja",
-        "item_id": "item-a",
-        "language": "ja",
-        "primary_skill": "mirror_body_correspondence",
-        "segments": [
-            "あなたが鏡の前で現実の右手を上げる。鏡の中の像で上がっている手は、現実のあなたの",
-            "手に対応する。",
-        ],
-        "blanks": [
-            {
-                "blank_id": "blank_1",
-                "position": 1,
-                "accepted_fills": ["右"],
-                "near_miss_fills": [],
-                "known_wrong_fills": ["左"],
-            }
-        ],
-        "expected_full_texts": [EXPECTED_FULL_TEXT],
-    }
+    item = _valid_item()
     (dataset_dir / "items.jsonl").write_text(json.dumps(item, ensure_ascii=False) + "\n", encoding="utf-8")
 
     (root / "model.toml").write_text(
@@ -156,6 +135,45 @@ fallback_extraction_enabled = false
         + "\n",
         encoding="utf-8",
     )
+
+
+def _valid_item() -> dict[str, object]:
+    return {
+        "dataset_id": "smoke_v0",
+        "probe_id": "probe-a",
+        "variant_id": "variant-a.ja",
+        "item_id": "item-a",
+        "version": "1.0.0",
+        "language": "ja",
+        "translation_relation": "original",
+        "equivalence_level": "same_claim",
+        "item_type": "single_blank_cloze",
+        "primary_skill": "mirror_body_correspondence",
+        "secondary_tags": ["spatial_reasoning"],
+        "validation_target": "body-part correspondence in mirror perspective",
+        "claim_scope": "A mirror image of a raised real right hand corresponds to the person's real right hand.",
+        "text_with_blanks": "あなたが鏡の前で現実の右手を上げる。鏡の中の像で上がっている手は、現実のあなたの（　　　）手に対応する。",
+        "segments": [
+            "あなたが鏡の前で現実の右手を上げる。鏡の中の像で上がっている手は、現実のあなたの",
+            "手に対応する。",
+        ],
+        "blanks": [
+            {
+                "blank_id": "blank_1",
+                "position": 1,
+                "primary_skill": "mirror_body_correspondence",
+                "context_distance": "local",
+                "accepted_fills": ["右"],
+                "near_miss_fills": [],
+                "known_wrong_fills": ["左"],
+                "expected_error_patterns": ["mirror_left_right_surface_rule"],
+            }
+        ],
+        "expected_full_texts": [EXPECTED_FULL_TEXT],
+        "ambiguity_level": "low",
+        "source_type": "synthetic",
+        "review_status": "reviewed",
+    }
 
 
 if __name__ == "__main__":
