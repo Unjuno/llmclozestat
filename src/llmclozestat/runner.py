@@ -25,6 +25,15 @@ from llmclozestat.result_record import build_result_record
 from llmclozestat.submission import build_manifest
 
 
+PROMPT_CONDITION_FIELDS = (
+    "prompt_template_id",
+    "prompt_language",
+    "support_mode",
+    "f_shot",
+    "blank_rendering",
+)
+
+
 class RunConfigurationError(ValueError):
     pass
 
@@ -76,6 +85,7 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
         "extraction_modes_enabled": ["exact_full_text", "segment"],
     }
 
+    prompt_condition_hash = _hash_json(_prompt_condition(prompt_cfg))
     parser_config_hash = _hash_json(parser_cfg)
     generation_config_hash = _hash_json(generation_cfg)
     environment = _build_environment(
@@ -83,6 +93,7 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
         run_id=run_id,
         dataset_id=dataset_id,
         dataset_sha256=dataset_sha256,
+        prompt_condition_hash=prompt_condition_hash,
         parser_config_hash=parser_config_hash,
         generation_config_hash=generation_config_hash,
         model=model_cfg,
@@ -124,6 +135,7 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
                     "support_mode": str(prompt_cfg.get("support_mode", "zero")),
                     "f_shot": int(prompt_cfg.get("f_shot", 0)),
                     "blank_rendering": _required_str(prompt_cfg, "blank_rendering", "prompt"),
+                    "prompt_condition_hash": prompt_condition_hash,
                     "parser_config": parser_cfg,
                     "parser_config_hash": parser_config_hash,
                     "generation_config": generation_cfg,
@@ -144,6 +156,7 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
         "summary_json": str(summary_path),
         "manifest_json": str(manifest_path),
         "dataset_sha256": dataset_sha256,
+        "prompt_condition_hash": prompt_condition_hash,
         "parser_config_hash": parser_config_hash,
         "generation_config_hash": generation_config_hash,
         "n_trials": summary.get("n_trials"),
@@ -239,6 +252,7 @@ def _build_environment(
     run_id: str,
     dataset_id: str,
     dataset_sha256: str,
+    prompt_condition_hash: str,
     parser_config_hash: str,
     generation_config_hash: str,
     model: dict[str, Any],
@@ -261,11 +275,16 @@ def _build_environment(
         "support_mode": str(prompt.get("support_mode", "zero")),
         "f_shot": int(prompt.get("f_shot", 0)),
         "blank_rendering": _required_str(prompt, "blank_rendering", "prompt"),
+        "prompt_condition_hash": prompt_condition_hash,
         "parser_config": parser,
         "parser_config_hash": parser_config_hash,
         "generation_config": generation,
         "generation_config_hash": generation_config_hash,
     }
+
+
+def _prompt_condition(prompt: dict[str, Any]) -> dict[str, Any]:
+    return {field: prompt.get(field) for field in PROMPT_CONDITION_FIELDS}
 
 
 def _load_items(path: Path) -> list[dict[str, Any]]:
