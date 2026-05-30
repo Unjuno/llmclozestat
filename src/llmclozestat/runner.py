@@ -99,7 +99,7 @@ def run_from_config(config_path: Path, progress_callback: ProgressCallback | Non
         "normalization": "v0_minimal",
         "extraction_modes_enabled": ["exact_full_text", "segment"],
     }
-    retry_cfg = _retry_config(config.get("retry") if isinstance(config.get("retry"), dict) else {})
+    retry_cfg = _retry_config(config.get("retry"))
 
     provider = str(backend.get("provider", backend.get("type", "openai_compatible")))
     model_id = _required_str(model_cfg, "model_id", "model")
