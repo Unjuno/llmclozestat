@@ -39,7 +39,16 @@ def run(config: Path = typer.Option(..., "--config", exists=False, file_okay=Tru
 
 
 @app.command("aggregate")
-def aggregate(input_path: Path = typer.Option(..., "--input", exists=False, file_okay=True, dir_okay=False), out: Path = typer.Option(..., "--out", file_okay=True, dir_okay=False)) -> None:
+def aggregate(
+    input_path: Path = typer.Option(..., "--input", exists=False, file_okay=True, dir_okay=False),
+    out: Path = typer.Option(..., "--out", file_okay=True, dir_okay=False),
+    validate_input: bool = typer.Option(True, "--validate-input/--no-validate-input"),
+) -> None:
+    if validate_input:
+        validation = validate_results_file(input_path)
+        if validation.failed:
+            typer.echo(json.dumps(validation.to_dict(), ensure_ascii=False, indent=2))
+            raise typer.Exit(code=1)
     summary = write_summary_file(input_path, out)
     typer.echo(json.dumps({"status": "passed", "summary_path": str(out), "n_trials": summary["n_trials"]}, ensure_ascii=False))
 
