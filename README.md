@@ -19,7 +19,7 @@ This repository is still in the v0.0 design and smoke-test phase. Several comman
 Currently implemented CLI commands:
 
 - `version`
-- `run` minimal local OpenAI-compatible runner from a TOML config
+- `run` minimal local OpenAI-compatible runner from a TOML config; backend call failures are retained as trial-level `parse_fail` result records instead of being silently dropped
 - `validate items` minimal item JSONL validation
 - `validate environment` minimal environment JSON validation
 - `validate results` minimal result JSONL consistency validation
@@ -37,6 +37,7 @@ Currently implemented library core:
 
 - strict-v0 parser/scorer pure function core
 - result-record assembly helper
+- backend failure result-record helper
 - environment JSON validation helper
 - summary aggregation helper
 - summary JSON validation core
@@ -108,6 +109,7 @@ The repository currently contains:
 - fixture policy and parser/result/summary aggregation fixtures;
 - minimal `validate items`, `validate environment`, and `validate results` commands;
 - minimal `run` command for OpenAI-compatible local or remote endpoints;
+- minimal backend failure result-record retention in `run`;
 - minimal `aggregate` command with input validation enabled by default;
 - minimal `validate summary` command;
 - minimal `prepare-submission` command with source artifact validation;
@@ -137,6 +139,8 @@ cloze item
 
 Repeated fills are counted. If a model gives the same wrong or known-wrong fill at the same blank multiple times, those repetitions are treated as evidence of a systematic tendency, not as duplicates to remove.
 
+Backend call failures are also retained as trial-level observations. A backend failure record uses `trial_status = "backend_error"`, `backend_error`, empty `raw_output`, `extraction_mode = "segment"`, and blank-level `parse_fail` entries so the denominator is not silently reduced.
+
 ## Required result metadata
 
 Result records must preserve the experimental conditions needed for later re-aggregation.
@@ -150,8 +154,11 @@ Important fields include:
 - `blank_rendering`
 - `extraction_mode`
 - `generation_config` or `generation_config_hash`
+- `dataset_sha256`
+- `condition_hash`
+- `experiment_hash`
 
-These fields prevent prompt changes, blank rendering changes, fallback extraction, or generation parameter differences from being mistaken for model behavior differences.
+These fields prevent prompt changes, blank rendering changes, fallback extraction, dataset changes, or generation parameter differences from being mistaken for model behavior differences.
 
 ## Integrity boundary
 
