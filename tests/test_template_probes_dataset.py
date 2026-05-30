@@ -16,7 +16,7 @@ class TemplateProbeDatasetTests(unittest.TestCase):
         result = validate_items_file(TEMPLATE_DATASET)
         self.assertFalse(result.failed, result.to_dict())
 
-    def test_template_probe_dataset_uses_multiple_blanks(self) -> None:
+    def test_template_probe_dataset_uses_multiple_blanks_without_role_metadata(self) -> None:
         items = _load_items()
         self.assertGreaterEqual(len(items), 2)
         self.assertEqual({item["dataset_id"] for item in items}, {"template_probes_v0"})
@@ -25,19 +25,19 @@ class TemplateProbeDatasetTests(unittest.TestCase):
                 blanks = item["blanks"]
                 self.assertGreaterEqual(len(blanks), 2)
                 self.assertEqual(len(item["segments"]), len(blanks) + 1)
-                plan = item["measurement_plan"]
-                blank_ids = {blank["blank_id"] for blank in blanks}
-                self.assertIn(plan["target_blank_id"], blank_ids)
-                self.assertEqual(set(plan["blank_roles"]), blank_ids)
+                self.assertNotIn("measurement_plan", item)
+                self.assertTrue(item["validation_target"]["main_question"])
+                self.assertTrue(item["claim_scope"]["generalization_limit"])
 
-    def test_formula_template_marks_formula_blank(self) -> None:
+    def test_formula_template_keeps_formula_as_observed_fill_not_role_label(self) -> None:
         items = {item["item_id"]: item for item in _load_items()}
         formula_item = items["formula_area_multiblank_0001"]
-        self.assertEqual(formula_item["measurement_plan"]["blank_roles"]["blank_2"], "formula")
         blank_2 = next(blank for blank in formula_item["blanks"] if blank["blank_id"] == "blank_2")
         self.assertEqual(blank_2["depends_on"], ["blank_1"])
         self.assertGreaterEqual(len(blank_2["accepted_fills"]), 2)
-        self.assertGreaterEqual(len(blank_2["known_wrong_fills"]), 1)
+        self.assertIn("w*h", blank_2["accepted_fills"])
+        self.assertIn("w+h", blank_2["known_wrong_fills"])
+        self.assertNotIn("role", blank_2)
 
 
 def _load_items() -> list[dict]:

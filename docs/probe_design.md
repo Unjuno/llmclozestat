@@ -2,7 +2,7 @@
 
 This document defines the item-design policy for `llmclozestat`.
 
-The project should not start by copying broad multiple-choice benchmarks. It should build cloze probes where each item has one explicit measurement target, one interpretable failure hypothesis, and as many blanks as needed to expose the path from input evidence to final answer.
+The project should not start by copying broad multiple-choice benchmarks. It should build cloze probes where each item has one explicit measurement target, one interpretable failure hypothesis, and enough blanks to expose useful output variation without over-structuring the answer.
 
 The previous seed-only rule of using a single blank per item is not a general design rule. It is acceptable for smoke tests, but it is too weak for real diagnostic templates because it often measures lexical prior or local phrase completion rather than the intended reasoning structure.
 
@@ -34,48 +34,30 @@ one item may contain multiple blanks
 
 The number of blanks is determined by the measurement target.
 
-Use one blank only when the target is a single local distinction, such as polarity, left/right, or one label. Use multiple blanks when the target requires an intermediate state, a binding step, or a final answer that can be separated from the evidence extraction step.
+Use one blank only when the target is a single local distinction, such as polarity, left/right, or one label. Use multiple blanks when the target needs context-sensitive completion, formula expression, variable binding, or a visible path from context to final answer.
 
-## Blank roles
+## Blank slots, not blank roles
 
-Multi-blank items should assign roles to blanks in a `measurement_plan` field.
+A blank is an observation slot, not a guaranteed semantic unit.
 
-Recommended roles:
+Do not require every blank to have a fixed conceptual role such as `concept_name`, `formula`, or `final_answer`. The model may fill the blanks in unexpected ways, and forcing a role per blank can overfit the item format before pilot data exists.
 
-| Role | Purpose |
-|---|---|
-| `evidence_extraction` | checks whether the model copies or identifies the relevant fact |
-| `intermediate_state` | checks an intermediate inferred value |
-| `binding` | checks whether the inferred value is attached to the correct label/entity |
-| `final_answer` | checks the final answer the item is mainly about |
-| `calibration` | checks whether the model says certainty/possibility correctly |
+The item should carry the measurement responsibility. The blanks should remain lightweight slots with accepted, near-miss, and known-wrong fills where those are known.
 
-Example:
-
-```json
-{
-  "measurement_plan": {
-    "target_blank_id": "blank_2",
-    "blank_roles": {
-      "blank_1": "intermediate_state",
-      "blank_2": "final_answer"
-    }
-  }
-}
-```
+Use item-level fields such as `validation_target`, `claim_scope`, and `notes` to explain what the whole item is intended to observe. Avoid adding per-blank plans unless an implementation feature actually needs them.
 
 ## Initial probe families
 
 | Family | What it detects | Good cloze shape | Failure signal |
 |---|---|---|---|
 | `negation_scope` | Whether the model tracks what a negation does and does not assert | short sentence or two-step certainty probe | negation word or over-strong certainty word |
-| `causal_direction` | Whether the model reverses cause and effect | condition/result sentence with final certainty blank | proof/certainty fill where only possibility exists |
-| `temporal_order` | Whether the model preserves event order | ordered events plus intermediate/latest/earliest blanks | last-mentioned event or salient wrong noun |
-| `spatial_perspective` | Whether the model changes viewpoint | facing-agent relation plus viewpoint/final-side blanks | original viewpoint answer |
-| `class_inclusion` | Whether the model reverses category inclusion | all A are B plus intermediate/final entailment blanks | proof/certainty fill |
-| `quantity_comparison` | Whether the model handles numeric comparison and label binding | quantity blank plus label blank | wrong label or non-existent label |
-| `idiom_literalness` | Whether the model over-literalizes idioms | quoted idiom plus literal/figurative blank | literal acceptance fill |
-| `coreference` | Whether the model resolves a referent using causal/common-sense cue | cause cue plus referent/final object blanks | nearby distractor noun |
+| `causal_direction` | Whether the model reverses cause and effect | condition/result sentence with final certainty slot | proof/certainty fill where only possibility exists |
+| `temporal_order` | Whether the model preserves event order | ordered events with enough slots to expose ordering errors | last-mentioned event or salient wrong noun |
+| `spatial_perspective` | Whether the model changes viewpoint | facing-agent relation with side-completion slots | original viewpoint answer |
+| `class_inclusion` | Whether the model reverses category inclusion | all A are B plus entailment/certainty slot | proof/certainty fill |
+| `quantity_comparison` | Whether the model handles numeric comparison and label binding | quantity and label slots when useful | wrong label or non-existent label |
+| `idiom_literalness` | Whether the model over-literalizes idioms | quoted idiom plus literalness slot | literal acceptance fill |
+| `coreference` | Whether the model resolves a referent using causal/common-sense cue | cause cue plus referent-completion slot | nearby distractor noun |
 
 ## Item authoring rules
 
@@ -83,14 +65,13 @@ Each item must satisfy the following:
 
 1. One item has one primary measurement target.
 2. One item may have one or more blanks; do not force single-blank form.
-3. Each blank must have a role when the item has multiple blanks.
-4. At least one blank should be the target blank used for the primary interpretation.
-5. `accepted_fills` must be narrow enough to aggregate.
-6. `known_wrong_fills` must correspond to interpretable error hypotheses.
-7. `claim_scope.does_not_support` must explicitly say what the item does **not** prove.
-8. Avoid high-stakes factual claims in seed items unless the source is pinned and cited.
-9. Avoid ambiguous blanks whose correct answer depends on unstated pragmatic assumptions.
-10. Prefer adversarial pairs later, but do not require pairs in the seed dataset.
+3. Do not require per-blank semantic roles before pilot data shows they are useful.
+4. `accepted_fills` must be narrow enough to aggregate.
+5. `known_wrong_fills` must correspond to interpretable error hypotheses when possible.
+6. `claim_scope.does_not_support` must explicitly say what the item does **not** prove.
+7. Avoid high-stakes factual claims in seed items unless the source is pinned and cited.
+8. Avoid ambiguous blanks whose correct answer depends on unstated pragmatic assumptions.
+9. Prefer adversarial pairs later, but do not require pairs in the seed dataset.
 
 ## Why cloze rather than multiple choice
 
@@ -107,7 +88,7 @@ It should be used to verify that:
 - repeated wrong fills are interpretable;
 - future dataset expansion has a concrete authoring pattern.
 
-Single-blank seed items are acceptable only as smoke examples. Multi-blank template items should be used when testing whether the framework can represent the actual diagnostic structure of a task.
+Single-blank seed items are acceptable only as smoke examples. Multi-blank template items should be used when testing whether the framework can represent richer diagnostic structures without requiring per-blank role metadata.
 
 It should not be used to claim model capability rankings.
 

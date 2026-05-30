@@ -9,7 +9,7 @@ It is intentionally small. The goal is not to make every item look scientific by
 A probe item should have a traceable path:
 
 ```text
-measurement target -> blanks -> scoring rule -> interpretation limit
+measurement target -> blank slots -> scoring rule -> interpretation limit
 ```
 
 If this path is unclear, the item is not ready.
@@ -19,7 +19,7 @@ If this path is unclear, the item is not ready.
 Before adding or expanding a probe item, answer these five questions in the PR description or dataset README:
 
 1. **Target**: What specific behavior or failure mode is this item trying to observe?
-2. **Blank roles**: What does each blank measure?
+2. **Blank slots**: Why does this item need this many blanks?
 3. **Wrong fills**: What does each known-wrong fill mean?
 4. **Decision rule**: What result would count as usable evidence, failure, or uncertainty?
 5. **Limit**: What must not be concluded from this item?
@@ -31,10 +31,12 @@ Do not force these answers into every JSONL record unless there is a clear imple
 Use multiple blanks when the target has internal structure:
 
 ```text
-context -> concept -> formula -> binding/substitution -> final answer
+context -> concept/formula/binding/substitution -> completed answer
 ```
 
 A single blank is acceptable only when the target is genuinely local, such as one polarity word, one label, or one side relation.
+
+Do not assign mandatory semantic roles to every blank before pilot data exists. Treat blanks as observation slots whose fills may reveal the structure after the run.
 
 ## Formula blank policy
 
