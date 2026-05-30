@@ -7,7 +7,7 @@ import secrets
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 try:  # Python 3.11+
     import tomllib  # type: ignore[import-not-found]
@@ -24,6 +24,8 @@ from llmclozestat.model_validation import validate_model_file
 from llmclozestat.result_record import build_backend_failure_record, build_result_record
 from llmclozestat.submission import build_manifest
 
+
+ProgressCallback = Callable[[dict[str, Any]], None]
 
 PROMPT_CONDITION_FIELDS = (
     "prompt_template_id",
@@ -54,7 +56,7 @@ class RunExecutionError(RuntimeError):
     pass
 
 
-def run_from_config(config_path: Path) -> dict[str, Any]:
+def run_from_config(config_path: Path, progress_callback: ProgressCallback | None = None) -> dict[str, Any]:
     config = _load_toml(config_path)
     root = config_path.parent
 
@@ -82,6 +84,7 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
     trials_per_item = int(run_cfg.get("trials_per_item", 1))
     if trials_per_item < 1:
         raise RunConfigurationError("run.trials_per_item must be >= 1")
+    total_trials = len(items) * trials_per_item
 
     output_root = _resolve(root, str(run_cfg.get("output_dir", "submissions")))
     run_dir = output_root / submitter_id / run_id
@@ -96,6 +99,7 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
         "normalization": "v0_minimal",
         "extraction_modes_enabled": ["exact_full_text", "segment"],
     }
+    retry_cfg = _retry_config(config.get("retry"))
 
     provider = str(backend.get("provider", backend.get("type", "openai_compatible")))
     model_id = _required_str(model_cfg, "model_id", "model")
@@ -138,10 +142,26 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
     client = _make_client(backend)
     model_name = _required_str(backend, "model_name", "backend")
 
+    _emit_progress(
+        progress_callback,
+        {
+            "event": "run_started",
+            "run_id": run_id,
+            "submitter_id": submitter_id,
+            "dataset_id": dataset_id,
+            "model_id": model_id,
+            "total_trials": total_trials,
+            "retry_max_attempts": retry_cfg["max_attempts"],
+            "submission_path": str(run_dir),
+        },
+    )
+
     trial_id = 0
     backend_error_count = 0
+    retried_trial_count = 0
     with run_jsonl_path.open("w", encoding="utf-8") as handle:
         for item in items:
+            item_id = str(item.get("item_id", ""))
             for _ in range(trials_per_item):
                 trial_id += 1
                 prompt_text = render_prompt(item, prompt_cfg)
@@ -163,9 +183,23 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
                     condition_hash=condition_hash,
                     experiment_hash=experiment_hash,
                 )
+                _emit_progress(
+                    progress_callback,
+                    {"event": "trial_started", "trial_id": trial_id, "total_trials": total_trials, "item_id": item_id},
+                )
                 started = time.perf_counter()
                 try:
-                    raw_output = _call_chat_completion(client, model_name, prompt_text, generation_cfg)
+                    raw_output, attempts = _call_chat_completion_with_retries(
+                        client=client,
+                        model_name=model_name,
+                        prompt_text=prompt_text,
+                        generation=generation_cfg,
+                        retry=retry_cfg,
+                        progress_callback=progress_callback,
+                        trial_id=trial_id,
+                        total_trials=total_trials,
+                        item_id=item_id,
+                    )
                 except Exception as exc:  # backend failures are kept as trial observations
                     latency_ms = (time.perf_counter() - started) * 1000.0
                     backend_error_count += 1
@@ -176,8 +210,23 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
                         error_type=type(exc).__name__,
                         error_message=_safe_error_message(exc),
                     )
+                    record["backend_attempts"] = retry_cfg["max_attempts"]
+                    _emit_progress(
+                        progress_callback,
+                        {
+                            "event": "trial_backend_error",
+                            "trial_id": trial_id,
+                            "total_trials": total_trials,
+                            "item_id": item_id,
+                            "attempts": retry_cfg["max_attempts"],
+                            "latency_ms": latency_ms,
+                            "error_type": type(exc).__name__,
+                        },
+                    )
                 else:
                     latency_ms = (time.perf_counter() - started) * 1000.0
+                    if attempts > 1:
+                        retried_trial_count += 1
                     record = build_result_record(
                         item=item,
                         raw_output=raw_output,
@@ -185,12 +234,27 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
                         parser_config=parser_cfg,
                         latency_ms=latency_ms,
                     )
+                    record["backend_attempts"] = attempts
+                    _emit_progress(
+                        progress_callback,
+                        {
+                            "event": "trial_passed",
+                            "trial_id": trial_id,
+                            "total_trials": total_trials,
+                            "item_id": item_id,
+                            "attempts": attempts,
+                            "latency_ms": latency_ms,
+                        },
+                    )
                 handle.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n")
 
+    _emit_progress(progress_callback, {"event": "artifact_written", "path": str(run_jsonl_path), "kind": "run_jsonl"})
     summary_path = run_dir / "summary.json"
     summary = write_summary_file(run_jsonl_path, summary_path)
+    _emit_progress(progress_callback, {"event": "artifact_written", "path": str(summary_path), "kind": "summary_json"})
     manifest_path = _write_manifest(run_dir, submitter_id, run_id)
-    return {
+    _emit_progress(progress_callback, {"event": "artifact_written", "path": str(manifest_path), "kind": "manifest_json"})
+    result = {
         "status": "passed",
         "run_id": run_id,
         "submission_path": str(run_dir),
@@ -206,7 +270,21 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
         "experiment_hash": experiment_hash,
         "n_trials": summary.get("n_trials"),
         "backend_error_count": backend_error_count,
+        "retried_trial_count": retried_trial_count,
+        "retry_max_attempts": retry_cfg["max_attempts"],
+        "total_trials": total_trials,
     }
+    _emit_progress(
+        progress_callback,
+        {
+            "event": "run_completed",
+            "run_id": run_id,
+            "total_trials": total_trials,
+            "backend_error_count": backend_error_count,
+            "retried_trial_count": retried_trial_count,
+        },
+    )
+    return result
 
 
 def render_prompt(item: dict[str, Any], prompt_cfg: dict[str, Any]) -> str:
@@ -261,6 +339,48 @@ def _write_manifest(run_dir: Path, submitter_id: str, run_id: str) -> Path:
     if validation.failed:
         raise RunExecutionError(f"generated manifest failed verification: {validation.to_dict()}")
     return manifest_path
+
+
+def _call_chat_completion_with_retries(
+    *,
+    client: OpenAI,
+    model_name: str,
+    prompt_text: str,
+    generation: dict[str, Any],
+    retry: dict[str, Any],
+    progress_callback: ProgressCallback | None,
+    trial_id: int,
+    total_trials: int,
+    item_id: str,
+) -> tuple[str, int]:
+    max_attempts = int(retry["max_attempts"])
+    delay_seconds = float(retry["retry_delay_seconds"])
+    backoff_factor = float(retry["backoff_factor"])
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return _call_chat_completion(client, model_name, prompt_text, generation), attempt
+        except Exception as exc:
+            if attempt >= max_attempts:
+                raise
+            _emit_progress(
+                progress_callback,
+                {
+                    "event": "trial_retry",
+                    "trial_id": trial_id,
+                    "total_trials": total_trials,
+                    "item_id": item_id,
+                    "attempt": attempt,
+                    "next_attempt": attempt + 1,
+                    "max_attempts": max_attempts,
+                    "delay_seconds": delay_seconds,
+                    "error_type": type(exc).__name__,
+                    "error_message": _safe_error_message(exc),
+                },
+            )
+            if delay_seconds > 0:
+                time.sleep(delay_seconds)
+                delay_seconds *= backoff_factor
+    raise AssertionError("unreachable retry loop exit")
 
 
 def _call_chat_completion(client: OpenAI, model_name: str, prompt_text: str, generation: dict[str, Any]) -> str:
@@ -377,6 +497,33 @@ def _build_trial_metadata(
         "condition_hash": condition_hash,
         "experiment_hash": experiment_hash,
     }
+
+
+def _retry_config(value: Any) -> dict[str, Any]:
+    if value is None:
+        value = {}
+    if not isinstance(value, dict):
+        raise RunConfigurationError("[retry] must be a TOML table when provided")
+    max_attempts = int(value.get("max_attempts", 1))
+    retry_delay_seconds = float(value.get("retry_delay_seconds", 0.0))
+    backoff_factor = float(value.get("backoff_factor", 1.0))
+    if max_attempts < 1:
+        raise RunConfigurationError("retry.max_attempts must be >= 1")
+    if retry_delay_seconds < 0:
+        raise RunConfigurationError("retry.retry_delay_seconds must be >= 0")
+    if backoff_factor < 1:
+        raise RunConfigurationError("retry.backoff_factor must be >= 1")
+    return {
+        "max_attempts": max_attempts,
+        "retry_delay_seconds": retry_delay_seconds,
+        "backoff_factor": backoff_factor,
+    }
+
+
+def _emit_progress(progress_callback: ProgressCallback | None, event: dict[str, Any]) -> None:
+    if progress_callback is None:
+        return
+    progress_callback(event)
 
 
 def _prompt_condition(prompt: dict[str, Any]) -> dict[str, Any]:

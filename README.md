@@ -19,7 +19,7 @@ This repository is still in the v0.0 design and smoke-test phase. Several comman
 Currently implemented CLI commands:
 
 - `version`
-- `run` minimal local OpenAI-compatible runner from a TOML config; backend call failures are retained as trial-level `parse_fail` result records instead of being silently dropped
+- `run` minimal local OpenAI-compatible runner from a TOML config; prints human-readable progress to stderr by default, supports minimal retry policy, and retains backend call failures as trial-level `parse_fail` result records instead of silently dropping them
 - `validate items` minimal item JSONL validation
 - `validate environment` minimal environment JSON validation
 - `validate results` minimal result JSONL consistency validation
@@ -38,6 +38,8 @@ Currently implemented library core:
 - strict-v0 parser/scorer pure function core
 - result-record assembly helper
 - backend failure result-record helper
+- runner progress callback helper
+- minimal runner retry helper
 - environment JSON validation helper
 - summary aggregation helper
 - summary JSON validation core
@@ -109,6 +111,7 @@ The repository currently contains:
 - fixture policy and parser/result/summary aggregation fixtures;
 - minimal `validate items`, `validate environment`, and `validate results` commands;
 - minimal `run` command for OpenAI-compatible local or remote endpoints;
+- minimal progress output and retry behavior in `run`;
 - minimal backend failure result-record retention in `run`;
 - minimal `aggregate` command with input validation enabled by default;
 - minimal `validate summary` command;
@@ -139,7 +142,20 @@ cloze item
 
 Repeated fills are counted. If a model gives the same wrong or known-wrong fill at the same blank multiple times, those repetitions are treated as evidence of a systematic tendency, not as duplicates to remove.
 
-Backend call failures are also retained as trial-level observations. A backend failure record uses `trial_status = "backend_error"`, `backend_error`, empty `raw_output`, `extraction_mode = "segment"`, and blank-level `parse_fail` entries so the denominator is not silently reduced.
+Backend call failures are also retained as trial-level observations. The runner retries backend calls according to `[retry]` before writing a failure record. A final backend failure record uses `trial_status = "backend_error"`, `backend_error`, empty `raw_output`, `extraction_mode = "segment"`, and blank-level `parse_fail` entries so the denominator is not silently reduced.
+
+The `run` command prints human-readable progress to stderr by default. The final machine-readable JSON result remains on stdout. Use `--no-progress` to silence progress output for scripted runs.
+
+Minimal retry config:
+
+```toml
+[retry]
+max_attempts = 3
+retry_delay_seconds = 0.5
+backoff_factor = 2.0
+```
+
+`max_attempts` defaults to `1`; no retry is performed unless the table is configured.
 
 ## Required result metadata
 
@@ -169,6 +185,8 @@ These fields prevent prompt changes, blank rendering changes, fallback extractio
 Current minimal commands:
 
 ```bash
+llmclozestat run --config run.toml
+llmclozestat run --config run.toml --no-progress
 llmclozestat validate environment --input results/smoke/environment.json
 llmclozestat validate results --input results/smoke/run.jsonl
 llmclozestat aggregate --input results/smoke/run.jsonl --out results/smoke/summary.json
