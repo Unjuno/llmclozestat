@@ -166,14 +166,6 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
                 started = time.perf_counter()
                 try:
                     raw_output = _call_chat_completion(client, model_name, prompt_text, generation_cfg)
-                    latency_ms = (time.perf_counter() - started) * 1000.0
-                    record = build_result_record(
-                        item=item,
-                        raw_output=raw_output,
-                        metadata=metadata,
-                        parser_config=parser_cfg,
-                        latency_ms=latency_ms,
-                    )
                 except Exception as exc:  # backend failures are kept as trial observations
                     latency_ms = (time.perf_counter() - started) * 1000.0
                     backend_error_count += 1
@@ -183,6 +175,15 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
                         latency_ms=latency_ms,
                         error_type=type(exc).__name__,
                         error_message=_safe_error_message(exc),
+                    )
+                else:
+                    latency_ms = (time.perf_counter() - started) * 1000.0
+                    record = build_result_record(
+                        item=item,
+                        raw_output=raw_output,
+                        metadata=metadata,
+                        parser_config=parser_cfg,
+                        latency_ms=latency_ms,
                     )
                 handle.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n")
 
