@@ -11,7 +11,7 @@ This document describes the current v0.0 smoke-test CLI surface. Implemented com
 Currently implemented commands:
 
 - `version`: print package version.
-- `run`: minimal TOML-configured runner for OpenAI-compatible chat-completion backends; backend call failures are retained as trial-level parse-fail records.
+- `run`: minimal TOML-configured runner for OpenAI-compatible chat-completion backends; prints progress to stderr by default; supports minimal backend retry policy; retains final backend call failures as trial-level parse-fail records.
 - `validate items`: minimal item JSONL validation.
 - `validate environment`: minimal environment JSON validation.
 - `validate results`: minimal result JSONL consistency validation.
@@ -57,6 +57,14 @@ Implemented command:
 llmclozestat run --config run.toml
 ```
 
+The command prints human-readable progress to stderr by default and prints the final machine-readable JSON result to stdout. This separation is intentional: users can see that the run is alive, while scripts can still parse stdout safely.
+
+To silence progress output:
+
+```bash
+llmclozestat run --config run.toml --no-progress
+```
+
 The run config is TOML. The implemented runner reads:
 
 - `[run]`
@@ -64,6 +72,7 @@ The run config is TOML. The implemented runner reads:
 - `[prompt]`
 - `[generation]`
 - optional `[parser]`
+- optional `[retry]`
 - `model.toml`, selected by `run.model_toml` or defaulting to `model.toml`
 
 Current scope:
@@ -76,10 +85,12 @@ one prompt condition
 single-process execution
 OpenAI-compatible chat completions backend
 writes environment.json, run.jsonl, summary.json, manifest.json
-keeps backend call failures as trial-level result records
+prints progress events to stderr by default
+retries backend calls according to [retry]
+keeps final backend call failures as trial-level result records
 ```
 
-Backend failure behavior:
+Backend failure behavior after all retry attempts fail:
 
 ```text
 trial_status = backend_error
@@ -94,6 +105,7 @@ instruction_following_pass = false
 item_format_pass = false
 item_strict_pass = false
 item_partial_score = 0.0
+backend_attempts = retry.max_attempts
 ```
 
 This keeps failed trials in the denominator instead of silently reducing `n_trials`.
@@ -135,14 +147,30 @@ stop = []
 normalization = "v0_minimal"
 extraction_modes_enabled = ["exact_full_text", "segment"]
 fallback_extraction_enabled = false
+
+[retry]
+max_attempts = 3
+retry_delay_seconds = 0.5
+backoff_factor = 2.0
 ```
+
+Retry defaults when `[retry]` is omitted:
+
+```text
+max_attempts = 1
+retry_delay_seconds = 0.0
+backoff_factor = 1.0
+```
+
+`retry.max_attempts` must be at least `1`; `retry.retry_delay_seconds` must be non-negative; `retry.backoff_factor` must be at least `1`.
 
 Current limitations:
 
 ```text
 no same-run parallel execution
 no sharded output
-no retry policy beyond backend/client behavior
+no resume policy
+no error taxonomy beyond captured exception type/message
 no execution attestation
 no proof that the claimed model actually produced the output
 ```
