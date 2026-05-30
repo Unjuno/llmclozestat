@@ -106,8 +106,10 @@ The repository currently contains:
 
 - item/result/environment/summary/manifest/model schemas;
 - one-item `smoke_v0` dataset;
+- small `seed_probes_v0` dataset for probe-template validation;
 - parser/scorer and result-format specifications;
 - fill-class policy;
+- probe-design taxonomy and item authoring policy;
 - fixture policy and parser/result/summary aggregation fixtures;
 - minimal `validate items`, `validate environment`, and `validate results` commands;
 - minimal `run` command for OpenAI-compatible local or remote endpoints;
@@ -220,14 +222,18 @@ llmclozestat verify-integrity --path submissions/local-user/smoke-v0-local-run
 - Not an LLM-judge scoring framework.
 - Not a web dashboard.
 
-## Initial dataset
+## Initial datasets
 
 See:
 
 - `datasets/smoke_v0/items.jsonl`
 - `datasets/smoke_v0/README.md`
+- `datasets/seed_probes_v0/items.jsonl`
+- `datasets/seed_probes_v0/README.md`
 
-The first item is a mirror-perspective probe. It tests whether a model can distinguish actual body-part correspondence from the common surface rule that mirrors “reverse left and right.”
+`smoke_v0` is the one-item pipeline smoke dataset.
+
+`seed_probes_v0` is a small human-designed seed dataset for validating cloze-probe templates across several probe families. It is not a benchmark and must not be used for leaderboard-style claims.
 
 ## Reference example package
 
@@ -285,6 +291,7 @@ This is self-reported measurement data. For large or repeated result collection,
 - `docs/research_rationale.md` — research value and diagnostic comparison rationale
 - `docs/conceptual_model.md` — conceptual model and scoring design
 - `docs/design.md` — project design and scope
+- `docs/probe_design.md` — probe taxonomy and item authoring policy
 - `docs/status_matrix.md` — implemented/specified/undefined status matrix
 - `docs/current_status_notes.md` — temporary implementation-boundary notes pending status-matrix synchronization
 - `docs/summary_scope.md` — single-run summary policy and future aggregate-report separation
