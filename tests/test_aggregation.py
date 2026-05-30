@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 import unittest
 
+from typer.testing import CliRunner
+
 from llmclozestat.aggregation import PARSE_FAIL_FILL_KEY, aggregate_results_file
+from llmclozestat.cli import app
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -53,6 +58,38 @@ class AggregationTests(unittest.TestCase):
         self.assertEqual(distribution_by_key[PARSE_FAIL_FILL_KEY]["rate"], 0.25)
         self.assertEqual(distribution_by_key[PARSE_FAIL_FILL_KEY]["extracted_fill"], None)
         self.assertEqual(distribution_by_key[PARSE_FAIL_FILL_KEY]["fill_class"], "parse_fail")
+
+    def test_aggregate_cli_refuses_invalid_result_jsonl_by_default(self) -> None:
+        runner = CliRunner()
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            run_jsonl = root / "invalid-run.jsonl"
+            summary_json = root / "summary.json"
+            run_jsonl.write_text(json.dumps({"trial_id": "incomplete"}) + "\n", encoding="utf-8")
+
+            result = runner.invoke(app, ["aggregate", "--input", str(run_jsonl), "--out", str(summary_json)])
+
+            self.assertNotEqual(result.exit_code, 0)
+            self.assertFalse(summary_json.exists())
+            payload = json.loads(result.output)
+            self.assertEqual(payload["status"], "failed")
+            self.assertTrue(payload["errors"])
+
+    def test_aggregate_cli_can_explicitly_skip_input_validation(self) -> None:
+        runner = CliRunner()
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            run_jsonl = root / "invalid-run.jsonl"
+            summary_json = root / "summary.json"
+            run_jsonl.write_text(json.dumps({"trial_id": "incomplete"}) + "\n", encoding="utf-8")
+
+            result = runner.invoke(app, ["aggregate", "--input", str(run_jsonl), "--out", str(summary_json), "--no-validate-input"])
+
+            self.assertEqual(result.exit_code, 0, result.output)
+            self.assertTrue(summary_json.is_file())
+            payload = json.loads(result.output)
+            self.assertEqual(payload["status"], "passed")
+            self.assertEqual(payload["n_trials"], 1)
 
 
 if __name__ == "__main__":
