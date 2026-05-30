@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -106,29 +107,72 @@ class PrepareSubmissionTests(unittest.TestCase):
 def _write_valid_sources(root: Path) -> Path:
     source_dir = root / "source"
     source_dir.mkdir()
-    result_record = _build_valid_result_record()
-    environment = {
-        "submitter_id": "local-user",
-        "run_id": "fixture-run",
-        "tool_version": "0.0.0-test",
-        "dataset_id": "fixture_dataset",
-        "model_id": "fixture-model",
-        "backend": "test-backend",
-        "provider": "test-provider",
+
+    dataset_sha256 = "sha256:" + "a" * 64
+    prompt_condition = {
         "prompt_template_id": "strict-v0-en",
         "prompt_language": "en",
         "support_mode": "zero",
         "f_shot": 0,
         "blank_rendering": "placeholder",
-        "parser_config": {
-            "normalization": "v0",
-            "extraction_modes_enabled": ["segment"],
-        },
-        "generation_config": {
-            "temperature": 0,
-            "top_p": None,
-            "max_tokens": 32,
-        },
+    }
+    parser_config = {
+        "normalization": "v0",
+        "extraction_modes_enabled": ["segment"],
+    }
+    generation_config = {
+        "temperature": 0,
+        "top_p": None,
+        "max_tokens": 32,
+    }
+    prompt_condition_hash = _hash_json(prompt_condition)
+    parser_config_hash = _hash_json(parser_config)
+    generation_config_hash = _hash_json(generation_config)
+    condition_hash = _hash_json(
+        {
+            "dataset_sha256": dataset_sha256,
+            "prompt_condition_hash": prompt_condition_hash,
+            "parser_config_hash": parser_config_hash,
+            "generation_config_hash": generation_config_hash,
+        }
+    )
+    experiment_hash = _hash_json(
+        {
+            "condition_hash": condition_hash,
+            "model_id": "fixture-model",
+            "backend": "test-backend",
+            "provider": "test-provider",
+        }
+    )
+
+    result_record = _build_valid_result_record(
+        dataset_sha256=dataset_sha256,
+        prompt_condition=prompt_condition,
+        parser_config=parser_config,
+        generation_config=generation_config,
+        prompt_condition_hash=prompt_condition_hash,
+        parser_config_hash=parser_config_hash,
+        generation_config_hash=generation_config_hash,
+        condition_hash=condition_hash,
+        experiment_hash=experiment_hash,
+    )
+    environment = {
+        "submitter_id": "local-user",
+        "run_id": "fixture-run",
+        "tool_version": "0.0.0-test",
+        "dataset_id": "fixture_dataset",
+        "dataset_sha256": dataset_sha256,
+        "model_id": "fixture-model",
+        "backend": "test-backend",
+        "provider": "test-provider",
+        **prompt_condition,
+        "prompt_condition_hash": prompt_condition_hash,
+        "parser_config": parser_config,
+        "parser_config_hash": parser_config_hash,
+        "generation_config": generation_config,
+        "generation_config_hash": generation_config_hash,
+        "condition_hash": condition_hash,
+        "experiment_hash": experiment_hash,
     }
     summary = aggregate_result_records([result_record])
 
@@ -139,11 +183,25 @@ def _write_valid_sources(root: Path) -> Path:
     return source_dir
 
 
-def _build_valid_result_record() -> dict[str, object]:
+def _build_valid_result_record(
+    *,
+    dataset_sha256: str,
+    prompt_condition: dict[str, object],
+    parser_config: dict[str, object],
+    generation_config: dict[str, object],
+    prompt_condition_hash: str,
+    parser_config_hash: str,
+    generation_config_hash: str,
+    condition_hash: str,
+    experiment_hash: str,
+) -> dict[str, object]:
     return {
         "submitter_id": "local-user",
         "run_id": "fixture-run",
         "dataset_id": "fixture_dataset",
+        "dataset_sha256": dataset_sha256,
+        "condition_hash": condition_hash,
+        "experiment_hash": experiment_hash,
         "model_id": "fixture-model",
         "backend": "test-backend",
         "provider": "test-provider",
@@ -153,17 +211,12 @@ def _build_valid_result_record() -> dict[str, object]:
         "primary_skill": "fixture_skill",
         "item_id": "item-1",
         "trial_id": 1,
-        "prompt_template_id": "strict-v0-en",
-        "prompt_language": "en",
-        "support_mode": "zero",
-        "f_shot": 0,
-        "blank_rendering": "placeholder",
-        "generation_config": {
-            "temperature": 0,
-            "top_p": None,
-            "max_tokens": 32,
-        },
-        "generation_config_hash": "sha256:" + "1" * 64,
+        **prompt_condition,
+        "prompt_condition_hash": prompt_condition_hash,
+        "parser_config": parser_config,
+        "parser_config_hash": parser_config_hash,
+        "generation_config": generation_config,
+        "generation_config_hash": generation_config_hash,
         "raw_output": "ok",
         "normalized_output": "ok",
         "extraction_mode": "segment",
@@ -184,6 +237,11 @@ def _build_valid_result_record() -> dict[str, object]:
         "item_partial_score": 1.0,
         "latency_ms": 10.0,
     }
+
+
+def _hash_json(value: object) -> str:
+    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return "sha256:" + hashlib.sha256(encoded).hexdigest()
 
 
 if __name__ == "__main__":
