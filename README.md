@@ -14,20 +14,24 @@ This is not an official leaderboard. The goal is to observe model behavior stati
 
 ## Implementation status
 
-This repository is still in the v0.0 design and smoke-test phase.
+This repository is still in the v0.0 design and smoke-test phase. Several commands are implemented, but most of them are intentionally narrow MVP implementations rather than full benchmark infrastructure.
 
 Currently implemented CLI commands:
 
 - `version`
+- `run` minimal local OpenAI-compatible runner from a TOML config
 - `validate items` minimal item JSONL validation
 - `validate environment` minimal environment JSON validation
 - `validate results` minimal result JSONL consistency validation
-- `aggregate` minimal result JSONL to summary JSON aggregation
+- `aggregate` minimal result JSONL to summary JSON aggregation; validates input by default and supports `--no-validate-input` for explicit scratch/debug use
 - `validate summary` minimal summary JSON validation
 - `prepare-submission` minimal source validation, artifact copy, and manifest writing
 - `validate manifest` minimal manifest JSON validation with optional file/package hash verification
-- `validate submission` minimal local submission package integrity and semantic identity validation
-- `verify-integrity` minimal local submission package integrity and semantic identity verification
+- `validate submission` minimal local submission package integrity, semantic identity, and regenerated-summary validation
+- `verify-integrity` minimal local submission package integrity, semantic identity, and regenerated-summary verification
+- `validate model` minimal `model.toml` validation
+- `validate model-repo` minimal one-model repository validation
+- `report` minimal CSV report generation from submission summaries
 
 Currently implemented library core:
 
@@ -40,14 +44,18 @@ Currently implemented library core:
 - file SHA-256 and canonical package hash verification helper
 - prepare-submission package helper with source artifact validation
 - submission semantic identity checker for `environment.json`, `run.jsonl`, and `summary.json`
+- regenerated summary checker for `summary.json` against `run.jsonl`
+- model metadata and model-repository validation helpers
+- minimal report generation helpers
+- local OpenAI-compatible runner helper
 
 Still design targets:
 
-- `run`
-- `validate model`
-- `validate model-repo`
-- `report`
 - `collect`
+- full JSON Schema execution for every schema
+- sharded and multi-run aggregation
+- signature / ledger support
+- hosted dashboard or leaderboard
 
 Use the current documentation as the implementation specification, not as a claim that the full CLI already works.
 
@@ -99,12 +107,15 @@ The repository currently contains:
 - fill-class policy;
 - fixture policy and parser/result/summary aggregation fixtures;
 - minimal `validate items`, `validate environment`, and `validate results` commands;
-- minimal `aggregate` command;
+- minimal `run` command for OpenAI-compatible local or remote endpoints;
+- minimal `aggregate` command with input validation enabled by default;
 - minimal `validate summary` command;
 - minimal `prepare-submission` command with source artifact validation;
 - minimal `validate manifest` command;
-- minimal `validate submission` command with manifest, hash, path, and semantic identity checks;
+- minimal `validate submission` command with manifest, hash, path, semantic identity, and regenerated-summary checks;
 - minimal `verify-integrity` command;
+- minimal `validate model` and `validate model-repo` commands;
+- minimal `report` command;
 - strict-v0 parser/scorer core;
 - result-record assembly helper;
 - summary aggregation helper;
@@ -170,9 +181,11 @@ llmclozestat validate submission --path submissions/local-user/smoke-v0-local-ru
 llmclozestat verify-integrity --path submissions/local-user/smoke-v0-local-run
 ```
 
+`aggregate` validates `run.jsonl` before writing `summary.json` by default. Use `--no-validate-input` only for scratch/debug work where an invalid or incomplete JSONL file is intentionally being inspected.
+
 `prepare-submission` validates the source `environment.json`, `run.jsonl`, and `summary.json` before copying them by default. Use `--no-validate-sources` only for scratch/debug packaging, not for publishable submissions.
 
-`validate submission` and `verify-integrity` require `environment.json`, `run.jsonl`, and `summary.json` to be listed in `manifest.json`, verify their file hashes, and check that `submitter_id`, `run_id`, `dataset_id`, and `model_id` agree across the three artifacts.
+`validate submission` and `verify-integrity` require `environment.json`, `run.jsonl`, and `summary.json` to be listed in `manifest.json`, verify their file hashes, check that `submitter_id`, `run_id`, `dataset_id`, `dataset_sha256`, `condition_hash`, `experiment_hash`, and `model_id` agree across artifacts, and verify that `summary.json` matches a regenerated summary from `run.jsonl`.
 
 ## What this is not
 
