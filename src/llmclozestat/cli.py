@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+from typing import Any
 
 import typer
 
@@ -29,9 +31,12 @@ def version() -> None:
 
 
 @app.command("run")
-def run(config: Path = typer.Option(..., "--config", exists=False, file_okay=True, dir_okay=False)) -> None:
+def run(
+    config: Path = typer.Option(..., "--config", exists=False, file_okay=True, dir_okay=False),
+    progress: bool = typer.Option(True, "--progress/--no-progress", help="Print human-readable run progress to stderr."),
+) -> None:
     try:
-        result = run_from_config(config)
+        result = run_from_config(config, progress_callback=_stderr_progress if progress else None)
     except Exception as exc:
         typer.echo(json.dumps({"status": "failed", "errors": [{"code": "run_error", "message": str(exc)}]}, ensure_ascii=False, indent=2))
         raise typer.Exit(code=1) from exc
@@ -143,3 +148,52 @@ def validate_submission(path: Path = typer.Option(..., "--path", exists=False, f
     typer.echo(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
     if result.failed:
         raise typer.Exit(code=1)
+
+
+def _stderr_progress(event: dict[str, Any]) -> None:
+    message = _format_progress_event(event)
+    if not message:
+        return
+    print(message, file=sys.stderr, flush=True)
+
+
+def _format_progress_event(event: dict[str, Any]) -> str:
+    event_name = str(event.get("event", ""))
+    if event_name == "run_started":
+        return (
+            f"[run] started run_id={event.get('run_id')} "
+            f"model={event.get('model_id')} dataset={event.get('dataset_id')} "
+            f"trials={event.get('total_trials')} retry_max={event.get('retry_max_attempts')}"
+        )
+    if event_name == "trial_started":
+        return f"[run] trial {event.get('trial_id')}/{event.get('total_trials')} started item={event.get('item_id')}"
+    if event_name == "trial_retry":
+        return (
+            f"[run] trial {event.get('trial_id')}/{event.get('total_trials')} retry "
+            f"{event.get('next_attempt')}/{event.get('max_attempts')} after {event.get('error_type')}"
+        )
+    if event_name == "trial_passed":
+        return (
+            f"[run] trial {event.get('trial_id')}/{event.get('total_trials')} passed "
+            f"attempts={event.get('attempts')} latency_ms={_format_number(event.get('latency_ms'))}"
+        )
+    if event_name == "trial_backend_error":
+        return (
+            f"[run] trial {event.get('trial_id')}/{event.get('total_trials')} backend_error "
+            f"attempts={event.get('attempts')} error={event.get('error_type')} "
+            f"latency_ms={_format_number(event.get('latency_ms'))}"
+        )
+    if event_name == "artifact_written":
+        return f"[run] wrote {event.get('kind')} {event.get('path')}"
+    if event_name == "run_completed":
+        return (
+            f"[run] completed run_id={event.get('run_id')} trials={event.get('total_trials')} "
+            f"backend_errors={event.get('backend_error_count')} retried_trials={event.get('retried_trial_count')}"
+        )
+    return ""
+
+
+def _format_number(value: object) -> str:
+    if isinstance(value, int | float):
+        return f"{value:.1f}"
+    return str(value)
