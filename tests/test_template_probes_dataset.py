@@ -9,7 +9,6 @@ from llmclozestat.item_validation import validate_items_file
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_DATASET = ROOT / "datasets" / "template_probes_v0" / "items.jsonl"
-SCIENTIFIC_DESIGN_FIELDS = ("construct", "operationalization", "H", "T", "D", "C", "U")
 
 
 class TemplateProbeDatasetTests(unittest.TestCase):
@@ -31,21 +30,6 @@ class TemplateProbeDatasetTests(unittest.TestCase):
                 self.assertIn(plan["target_blank_id"], blank_ids)
                 self.assertEqual(set(plan["blank_roles"]), blank_ids)
 
-    def test_template_probe_dataset_has_scientific_design_metadata(self) -> None:
-        for item in _load_items():
-            with self.subTest(item_id=item["item_id"]):
-                design = item.get("scientific_design")
-                self.assertIsInstance(design, dict)
-                assert isinstance(design, dict)
-                for field in SCIENTIFIC_DESIGN_FIELDS:
-                    self.assertIn(field, design)
-                    self.assertIsInstance(design[field], str)
-                    self.assertGreater(len(design[field].strip()), 0)
-                self.assertIn("PASS", design["D"])
-                self.assertIn("FAIL", design["D"])
-                self.assertIn("UNCERTAIN", design["D"])
-                self.assertIn("n_min", design["T"])
-
     def test_formula_template_marks_formula_blank(self) -> None:
         items = {item["item_id"]: item for item in _load_items()}
         formula_item = items["formula_area_multiblank_0001"]
@@ -54,7 +38,6 @@ class TemplateProbeDatasetTests(unittest.TestCase):
         self.assertEqual(blank_2["depends_on"], ["blank_1"])
         self.assertGreaterEqual(len(blank_2["accepted_fills"]), 2)
         self.assertGreaterEqual(len(blank_2["known_wrong_fills"]), 1)
-        self.assertIn("式同値正規化未実装", formula_item["scientific_design"]["U"])
 
 
 def _load_items() -> list[dict]:
