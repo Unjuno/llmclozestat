@@ -1,92 +1,60 @@
 # Scientific Probe Methodology
 
-This document defines the minimum scientific design standard for `llmclozestat` probe items.
+This document defines a lightweight review protocol for `llmclozestat` probe items.
 
-A probe item is not scientifically useful merely because it resembles an existing benchmark task. It must state what construct it attempts to observe, how the construct is operationalized as blanks, what result would support or fail the hypothesis, and what alternative explanations remain.
+It is intentionally small. The goal is not to make every item look scientific by adding long metadata. The goal is to prevent overclaiming and catch weak item designs before they enter a dataset.
 
-## Why this document exists
+## Core rule
 
-The repository already contains cloze items and a probe taxonomy. That is not enough.
-
-A scientifically useful item needs a traceable path:
+A probe item should have a traceable path:
 
 ```text
-construct -> operationalization -> observable blank outcomes -> decision rule -> uncertainty statement
+measurement target -> blanks -> scoring rule -> interpretation limit
 ```
 
-Without this path, a failure can be over-interpreted. For example, a wrong formula blank may indicate formula confusion, parsing failure, symbol-format mismatch, or ambiguity in accepted fills.
+If this path is unclear, the item is not ready.
 
-## Design standard: H/T/D/C/U
+## Minimum review checklist
 
-Each non-smoke template item should include a `scientific_design` object with these fields:
+Before adding or expanding a probe item, answer these five questions in the PR description or dataset README:
 
-| Field | Meaning |
-|---|---|
-| `construct` | The latent capability or failure mode being probed |
-| `operationalization` | How the construct is turned into observable blank outcomes |
-| `H` | Falsifiable hypothesis with measurement target and threshold |
-| `T` | Minimal validation plan: data, environment, minimum trials, stopping rule |
-| `D` | Decision rule: PASS / FAIL / UNCERTAIN conditions |
-| `C` | Competing explanations and expected failure modes |
-| `U` | Uncertainty sources and current mitigation |
+1. **Target**: What specific behavior or failure mode is this item trying to observe?
+2. **Blank roles**: What does each blank measure?
+3. **Wrong fills**: What does each known-wrong fill mean?
+4. **Decision rule**: What result would count as usable evidence, failure, or uncertainty?
+5. **Limit**: What must not be concluded from this item?
 
-This is not full psychometrics. It is a minimum design discipline for avoiding ungrounded benchmark claims.
+Do not force these answers into every JSONL record unless there is a clear implementation need. Long item records become hard to audit.
 
-## Required interpretation discipline
+## Multi-blank policy
 
-Use these rules when writing or reviewing items:
-
-1. Do not claim broad ability from one item.
-2. Do not claim causal model behavior from one fill distribution alone.
-3. Separate target blank and supporting blanks.
-4. Prefer multi-blank designs when a task has intermediate structure.
-5. For formula blanks, record whether scoring is exact string matching, enumerated equivalence, or symbolic normalization.
-6. Include plausible competing explanations.
-7. Include an uncertainty statement before expanding the dataset.
-
-## Decision-rule example
-
-For a two-blank quantity comparison item:
+Use multiple blanks when the target has internal structure:
 
 ```text
-H: Under fixed prompt/generation settings, a model that can perform the target comparison should produce accepted fills for both the intermediate difference blank and final label blank in at least 95% of trials.
-T: Run n_min=20 trials, temperature=0 when supported, fixed dataset/hash/model/prompt/generation settings, no early PASS before n_min.
-D: PASS if both blanks pass in >=95% of trials; FAIL if target blank pass rate <80%; UNCERTAIN otherwise or if parse_fail_rate >10%.
-C: failure may be arithmetic error, label-binding error, output-format mismatch, or prompt misunderstanding.
-U: uncertainty comes from parser strictness, sampling nondeterminism, backend differences, and accepted-fill incompleteness.
+context -> concept -> formula -> binding/substitution -> final answer
 ```
 
-Thresholds are item-family defaults, not universal truth. They should be revised after pilot data.
+A single blank is acceptable only when the target is genuinely local, such as one polarity word, one label, or one side relation.
 
-## Relation to existing benchmark research
+## Formula blank policy
 
-The methodology borrows broad evaluation lessons without copying task format:
+Formula blanks are valid for math and physics-style probes.
 
-- MMLU demonstrates the value of broad subject coverage but also motivates avoiding overclaiming from narrow items.
-- BIG-bench motivates diverse task families and explicit capability boundaries.
-- HELM motivates scenario/metric separation and multi-metric reporting rather than a single score.
-- TruthfulQA motivates adversarial construction around common false beliefs and explicit misconception targets.
-- WinoGrande and HellaSwag motivate adversarial commonsense and continuation-style probes, but cloze items should expose the actual fill string.
-- DROP and GSM8K motivate separating reading, intermediate quantities, and final answer.
-- BBQ motivates distinguishing under-informative from informative contexts when testing bias-sensitive items.
+However, current scoring is still based on listed accepted fills. Therefore:
 
-## Dataset policy
+- list common equivalent spellings explicitly;
+- mark near-miss formatting variants separately;
+- include known-wrong fills that represent interpretable confusions;
+- do not claim full formula reasoning until symbolic equivalence and unit checks exist.
 
-- `smoke_v0`: pipeline smoke data. It may be very small and should not be interpreted scientifically.
-- `seed_probes_v0`: small seed examples. They should not be used for ranking claims.
-- `template_probes_v0`: item-shape templates. Items here should carry `scientific_design`.
+## Current limitations
 
-Future benchmark-like datasets should not be created until template items have been pilot-tested and revised.
-
-## Known limitations
-
-Current implementation still lacks:
+The current implementation still lacks:
 
 - symbolic formula equivalence normalization;
-- dimensional/unit consistency scoring;
-- item response modeling;
-- inter-annotator review workflow;
-- contamination analysis;
-- confidence intervals and sequential testing in reports.
+- unit or dimensional consistency scoring;
+- confidence intervals in reports;
+- item contamination checks;
+- inter-reviewer agreement tracking.
 
-Until these exist, results should be framed as local diagnostic observations, not as general model capability rankings.
+Until these exist, results should be described as local diagnostic observations, not broad model capability rankings.
