@@ -11,7 +11,7 @@ This document describes the current v0.0 smoke-test CLI surface. Implemented com
 Currently implemented commands:
 
 - `version`: print package version.
-- `run`: minimal TOML-configured runner for OpenAI-compatible chat-completion backends.
+- `run`: minimal TOML-configured runner for OpenAI-compatible chat-completion backends; backend call failures are retained as trial-level parse-fail records.
 - `validate items`: minimal item JSONL validation.
 - `validate environment`: minimal environment JSON validation.
 - `validate results`: minimal result JSONL consistency validation.
@@ -76,7 +76,27 @@ one prompt condition
 single-process execution
 OpenAI-compatible chat completions backend
 writes environment.json, run.jsonl, summary.json, manifest.json
+keeps backend call failures as trial-level result records
 ```
+
+Backend failure behavior:
+
+```text
+trial_status = backend_error
+backend_error.type = exception class name
+backend_error.message = sanitized single-line message
+raw_output = ""
+normalized_output = ""
+extraction_mode = segment
+blank_results[*].fill_class = parse_fail
+blank_results[*].parse_fail = true
+instruction_following_pass = false
+item_format_pass = false
+item_strict_pass = false
+item_partial_score = 0.0
+```
+
+This keeps failed trials in the denominator instead of silently reducing `n_trials`.
 
 Minimal config shape:
 
