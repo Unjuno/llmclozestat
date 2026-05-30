@@ -21,7 +21,7 @@ from llmclozestat.aggregation import write_summary_file
 from llmclozestat.item_validation import validate_items_file
 from llmclozestat.manifest_validation import validate_manifest_file
 from llmclozestat.model_validation import validate_model_file
-from llmclozestat.result_record import build_result_record
+from llmclozestat.result_record import build_backend_failure_record, build_result_record
 from llmclozestat.submission import build_manifest
 
 
@@ -139,40 +139,52 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
     model_name = _required_str(backend, "model_name", "backend")
 
     trial_id = 0
+    backend_error_count = 0
     with run_jsonl_path.open("w", encoding="utf-8") as handle:
         for item in items:
             for _ in range(trials_per_item):
                 trial_id += 1
                 prompt_text = render_prompt(item, prompt_cfg)
+                metadata = _build_trial_metadata(
+                    submitter_id=submitter_id,
+                    run_id=run_id,
+                    dataset_id=dataset_id,
+                    dataset_sha256=dataset_sha256,
+                    model=model_cfg,
+                    backend=model_backend,
+                    provider=provider,
+                    trial_id=trial_id,
+                    prompt=prompt_cfg,
+                    parser=parser_cfg,
+                    generation=generation_cfg,
+                    prompt_condition_hash=prompt_condition_hash,
+                    parser_config_hash=parser_config_hash,
+                    generation_config_hash=generation_config_hash,
+                    condition_hash=condition_hash,
+                    experiment_hash=experiment_hash,
+                )
                 started = time.perf_counter()
-                raw_output = _call_chat_completion(client, model_name, prompt_text, generation_cfg)
-                latency_ms = (time.perf_counter() - started) * 1000.0
-                metadata = {
-                    "submitter_id": submitter_id,
-                    "run_id": run_id,
-                    "dataset_id": dataset_id,
-                    "dataset_sha256": dataset_sha256,
-                    "model_id": model_id,
-                    "model_source": model_cfg.get("source"),
-                    "quantization": model_cfg.get("quantization"),
-                    "backend": model_backend,
-                    "backend_version": model_cfg.get("backend_version"),
-                    "provider": provider,
-                    "trial_id": trial_id,
-                    "prompt_template_id": _required_str(prompt_cfg, "prompt_template_id", "prompt"),
-                    "prompt_language": _required_str(prompt_cfg, "prompt_language", "prompt"),
-                    "support_mode": str(prompt_cfg.get("support_mode", "zero")),
-                    "f_shot": int(prompt_cfg.get("f_shot", 0)),
-                    "blank_rendering": _required_str(prompt_cfg, "blank_rendering", "prompt"),
-                    "prompt_condition_hash": prompt_condition_hash,
-                    "parser_config": parser_cfg,
-                    "parser_config_hash": parser_config_hash,
-                    "generation_config": generation_cfg,
-                    "generation_config_hash": generation_config_hash,
-                    "condition_hash": condition_hash,
-                    "experiment_hash": experiment_hash,
-                }
-                record = build_result_record(item=item, raw_output=raw_output, metadata=metadata, parser_config=parser_cfg, latency_ms=latency_ms)
+                try:
+                    raw_output = _call_chat_completion(client, model_name, prompt_text, generation_cfg)
+                except Exception as exc:  # backend failures are kept as trial observations
+                    latency_ms = (time.perf_counter() - started) * 1000.0
+                    backend_error_count += 1
+                    record = build_backend_failure_record(
+                        item=item,
+                        metadata=metadata,
+                        latency_ms=latency_ms,
+                        error_type=type(exc).__name__,
+                        error_message=_safe_error_message(exc),
+                    )
+                else:
+                    latency_ms = (time.perf_counter() - started) * 1000.0
+                    record = build_result_record(
+                        item=item,
+                        raw_output=raw_output,
+                        metadata=metadata,
+                        parser_config=parser_cfg,
+                        latency_ms=latency_ms,
+                    )
                 handle.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n")
 
     summary_path = run_dir / "summary.json"
@@ -193,6 +205,7 @@ def run_from_config(config_path: Path) -> dict[str, Any]:
         "condition_hash": condition_hash,
         "experiment_hash": experiment_hash,
         "n_trials": summary.get("n_trials"),
+        "backend_error_count": backend_error_count,
     }
 
 
@@ -320,6 +333,52 @@ def _build_environment(
     }
 
 
+def _build_trial_metadata(
+    *,
+    submitter_id: str,
+    run_id: str,
+    dataset_id: str,
+    dataset_sha256: str,
+    model: dict[str, Any],
+    backend: str,
+    provider: str,
+    trial_id: int,
+    prompt: dict[str, Any],
+    parser: dict[str, Any],
+    generation: dict[str, Any],
+    prompt_condition_hash: str,
+    parser_config_hash: str,
+    generation_config_hash: str,
+    condition_hash: str,
+    experiment_hash: str,
+) -> dict[str, Any]:
+    return {
+        "submitter_id": submitter_id,
+        "run_id": run_id,
+        "dataset_id": dataset_id,
+        "dataset_sha256": dataset_sha256,
+        "model_id": _required_str(model, "model_id", "model"),
+        "model_source": model.get("source"),
+        "quantization": model.get("quantization"),
+        "backend": backend,
+        "backend_version": model.get("backend_version"),
+        "provider": provider,
+        "trial_id": trial_id,
+        "prompt_template_id": _required_str(prompt, "prompt_template_id", "prompt"),
+        "prompt_language": _required_str(prompt, "prompt_language", "prompt"),
+        "support_mode": str(prompt.get("support_mode", "zero")),
+        "f_shot": int(prompt.get("f_shot", 0)),
+        "blank_rendering": _required_str(prompt, "blank_rendering", "prompt"),
+        "prompt_condition_hash": prompt_condition_hash,
+        "parser_config": parser,
+        "parser_config_hash": parser_config_hash,
+        "generation_config": generation,
+        "generation_config_hash": generation_config_hash,
+        "condition_hash": condition_hash,
+        "experiment_hash": experiment_hash,
+    }
+
+
 def _prompt_condition(prompt: dict[str, Any]) -> dict[str, Any]:
     return {field: prompt.get(field) for field in PROMPT_CONDITION_FIELDS}
 
@@ -359,6 +418,19 @@ def _load_items(path: Path) -> list[dict[str, Any]]:
 def _generate_run_id(dataset_id: str) -> str:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     return f"{dataset_id}-{timestamp}-{secrets.token_hex(3)}"
+
+
+def _safe_error_message(exc: Exception) -> str:
+    message = str(exc).replace("\r", " ").replace("\n", " ")
+    for key, value in os.environ.items():
+        if not value:
+            continue
+        upper_key = key.upper()
+        if upper_key.endswith(("KEY", "TOKEN", "SECRET", "PASSWORD")):
+            message = message.replace(value, "[redacted]")
+    if len(message) > 500:
+        return message[:497] + "..."
+    return message
 
 
 def _hash_json(value: Any) -> str:

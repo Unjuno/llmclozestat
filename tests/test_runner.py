@@ -57,6 +57,7 @@ class RunnerTests(unittest.TestCase):
 
             self.assertEqual(result["status"], "passed")
             self.assertEqual(result["run_id"], "smoke_v0-20260528T120000Z-a1b2c3")
+            self.assertEqual(result["backend_error_count"], 0)
             _assert_hash_fields(result)
 
             submission_path = Path(result["submission_path"])
@@ -76,11 +77,54 @@ class RunnerTests(unittest.TestCase):
             self.assertEqual(len(run_records), 1)
             self.assertTrue(run_records[0]["item_strict_pass"])
             self.assertEqual(run_records[0]["blank_results"][0]["extracted_fill"], "右")
+            _assert_hash_fields(run_records[0])
             _assert_hash_fields(run_records[0]["metadata"])
 
             for field in HASH_FIELDS:
+                self.assertEqual(environment[field], run_records[0][field], field)
                 self.assertEqual(environment[field], run_records[0]["metadata"][field], field)
                 self.assertEqual(environment[field], result[field], field)
+
+            validation = validate_submission_manifest(submission_path)
+            self.assertFalse(validation.failed, validation.to_dict())
+
+    def test_run_from_config_records_backend_errors_as_parse_fail_trials(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            _write_project_files(root)
+
+            with patch("llmclozestat.runner._make_client", return_value=object()), patch(
+                "llmclozestat.runner._call_chat_completion",
+                side_effect=RuntimeError("fixture backend down"),
+            ):
+                result = run_from_config(root / "run.toml")
+
+            self.assertEqual(result["status"], "passed")
+            self.assertEqual(result["backend_error_count"], 1)
+
+            submission_path = Path(result["submission_path"])
+            run_records = [json.loads(line) for line in (submission_path / "run.jsonl").read_text(encoding="utf-8").splitlines()]
+            self.assertEqual(len(run_records), 1)
+            record = run_records[0]
+            self.assertEqual(record["trial_status"], "backend_error")
+            self.assertEqual(record["backend_error"]["type"], "RuntimeError")
+            self.assertEqual(record["backend_error"]["message"], "fixture backend down")
+            self.assertEqual(record["raw_output"], "")
+            self.assertEqual(record["normalized_output"], "")
+            self.assertEqual(record["extraction_mode"], "segment")
+            self.assertFalse(record["instruction_following_pass"])
+            self.assertFalse(record["item_format_pass"])
+            self.assertFalse(record["item_strict_pass"])
+            self.assertEqual(record["item_partial_score"], 0.0)
+            self.assertTrue(record["blank_results"][0]["parse_fail"])
+            self.assertEqual(record["blank_results"][0]["fill_class"], "parse_fail")
+            _assert_hash_fields(record)
+            _assert_hash_fields(record["metadata"])
+
+            summary = json.loads((submission_path / "summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(summary["n_trials"], 1)
+            self.assertEqual(summary["strict_pass_rate"], 0.0)
+            self.assertEqual(summary["parse_fail_rate"], 1.0)
 
             validation = validate_submission_manifest(submission_path)
             self.assertFalse(validation.failed, validation.to_dict())

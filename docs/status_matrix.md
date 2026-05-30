@@ -36,6 +36,7 @@ item JSONL validation core
 environment JSON validation core
 strict-v0 parser/scorer pure function core
 result-record assembly helper
+backend failure result-record helper
 result JSONL validation core
 summary aggregation helper
 summary JSON validation core
@@ -98,7 +99,7 @@ The implemented commands are still narrow MVP implementations. They are not a co
 | Area | Status | Evidence / current behavior | Gap |
 |---|---|---|---|
 | `version` | implemented | Prints package version | None for v0 |
-| `run` | partially implemented | Reads TOML config, validates model/dataset metadata, calls an OpenAI-compatible chat-completions backend, writes `environment.json`, `run.jsonl`, `summary.json`, and `manifest.json` | No sharded output, retry policy, execution attestation, or trial-level backend-failure record policy |
+| `run` | partially implemented | Reads TOML config, validates model/dataset metadata, calls an OpenAI-compatible chat-completions backend, writes `environment.json`, `run.jsonl`, `summary.json`, and `manifest.json`, and records backend call failures as trial-level parse-fail observations | No sharded output, retry policy, resume policy, or execution attestation |
 | `validate items` | partially implemented | Validates JSONL parse, required/minItems-like item fields, selected cross-field checks, duplicate item/variant IDs | Not a complete JSON Schema validator |
 | `validate environment` | partially implemented | Validates environment JSON parse, required fields, support mode, parser config, and generation config | Not a complete JSON Schema validator; no generation_config_hash recomputation |
 | `validate results` | partially implemented | Validates JSONL parse, required result fields, condition fields, and selected scoring consistency rules | Not a complete JSON Schema validator; no sharded input |
@@ -188,6 +189,19 @@ parse_fail with extracted_fill warning
 reserved blank-level format_fail warning
 item_strict_pass formula consistency
 duplicate result identity tuple
+```
+
+Backend call failure records are valid result records. They use:
+
+```text
+trial_status = backend_error
+backend_error.type
+backend_error.message
+raw_output = ""
+normalized_output = ""
+extraction_mode = segment
+blank-level fill_class = parse_fail
+blank-level parse_fail = true
 ```
 
 ### Summary aggregation
@@ -373,7 +387,7 @@ Reports are derived artifacts. Raw submissions remain the source of truth.
 | Model repo | Full one-model repository rule | partially implemented | Local validator exists; CI/PR policy integration is not complete |
 | Report | Full report suite | partially implemented | Current report command writes `run_index.csv` and `blank_fills.csv` only |
 | Collect | end-to-end convenience command | specified | No implementation |
-| Run | robust model execution | partially implemented | Minimal OpenAI-compatible runner exists; failure/retry/resume policy is not complete |
+| Run | robust model execution | partially implemented | Minimal OpenAI-compatible runner exists and keeps backend failures; retry/resume/sharding policy is not complete |
 
 ## Data and schema status
 
@@ -394,7 +408,7 @@ Reports are derived artifacts. Raw submissions remain the source of truth.
 
 | Area | Status | Defined behavior | Current state / gap |
 |---|---|---|---|
-| raw output preservation | partially implemented | Result records should preserve `raw_output` | Pure parser/scorer and result-record helper preserve it |
+| raw output preservation | partially implemented | Result records should preserve `raw_output` | Pure parser/scorer and result-record helper preserve it for successful backend calls; backend failure records intentionally use empty raw output plus `backend_error` metadata |
 | normalization | partially implemented | v0 minimal normalization is intended | Implements newline normalization and trim only |
 | exact full-text extraction | partially implemented | v0 extraction mode | Implemented in pure parser/scorer function and fixture-tested |
 | segment extraction | partially implemented | v0 extraction mode | Implemented for simple ordered segment extraction and fixture-tested |
@@ -402,6 +416,7 @@ Reports are derived artifacts. Raw submissions remain the source of truth.
 | fill classification | partially implemented | accepted / near_miss / known_wrong / wrong / parse_fail | Implemented and fixture-tested for initial cases |
 | strict-pass formula | partially implemented | `instruction_following_pass and item_format_pass and all content_pass` | Implemented in pure function and result validator checks consistency |
 | result-record assembly | partially implemented | parser/scorer output plus run/model/prompt/generation metadata | Implemented as a pure helper and used by the minimal runner |
+| backend failure record assembly | partially implemented | backend failures should remain in the denominator | Implemented as trial-level parse-fail records |
 | repeated fill counting | implemented | Do not deduplicate repeated fills | Implemented in single-run aggregation |
 
 ## Integrity status
@@ -436,8 +451,8 @@ Reports are derived artifacts. Raw submissions remain the source of truth.
 | item fixture regression | implemented | unittest checks valid/invalid item fixtures | No full schema validator test |
 | environment validation regression | implemented | unittest checks example environment, missing field, zero/f_shot conflict, duplicate extraction mode, and output contract | No full JSON Schema validation |
 | parser fixture regression | implemented | unittest checks parser fixtures against pure parser/scorer output | No result schema validation yet |
-| result-record assembly regression | implemented | unittest checks required fields, preserved parser output, and missing metadata error | No result schema execution test yet |
-| runner regression | implemented | unittest patches backend calls and checks a valid local submission package is written | No live backend test in CI |
+| result-record assembly regression | implemented | unittest checks required fields, preserved parser output, identity metadata, missing metadata error, and backend failure record assembly | No result schema execution test yet |
+| runner regression | implemented | unittest patches backend calls and checks successful package writing plus backend failure persistence | No live backend test in CI |
 | result validation regression | implemented | unittest checks valid/invalid result fixtures and expected codes | No full JSON Schema validation yet |
 | summary aggregation regression | implemented | unittest checks repeated fills, rates, sentinel parse failures, entropy, top fill fields, and aggregate CLI input validation | Single-run fixture only |
 | summary validation regression | implemented | unittest checks valid/invalid summary fixtures and expected codes | No full JSON Schema validation or standalone source cross-check |
